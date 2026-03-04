@@ -97,4 +97,6 @@ src/
 
 ## Dependencies
 
-Add dependencies only when necessary. After adding or removing a package, run `npm run depcheck` to confirm knip reports no issues.
+- Pin all dependencies to exact versions — no `^`, `~`, or `*` ranges
+- When adding a package, install it and copy the exact resolved version from `package-lock.json` into `package.json`
+- After adding or removing a package, run `npm run depcheck` to confirm knip reports no issues
