@@ -27,12 +27,11 @@ export default async function CheckpointPage({
   const { project, stack, epochMs } = await params
   const { page: pageParam } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1', 10))
-  const epoch = parseInt(epochMs, 10)
 
   let checkpoint: Awaited<ReturnType<typeof getCheckpoint>>
 
   try {
-    checkpoint = await getCheckpoint(project, stack, epoch)
+    checkpoint = await getCheckpoint(project, stack, epochMs)
   } catch {
     notFound()
   }
@@ -41,7 +40,6 @@ export default async function CheckpointPage({
   const manifest = checkpoint.deployment?.manifest
   const totalPages = Math.max(1, Math.ceil(allResources.length / PAGE_SIZE))
   const resources = allResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
   const checkpointPath = `/stacks/${project}/${stack}/checkpoint/${epochMs}`
 
   return (
@@ -59,7 +57,7 @@ export default async function CheckpointPage({
         </Link>
         <span>/</span>
         <span className="text-foreground font-medium">
-          Snapshot {new Date(epoch).toLocaleString()}
+          Snapshot {manifest?.time ? new Date(manifest.time).toLocaleString() : epochMs}
         </span>
       </div>
 

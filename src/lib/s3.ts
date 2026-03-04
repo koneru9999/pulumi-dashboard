@@ -102,15 +102,14 @@ export async function listStacks(page = 1, pageSize = 25): Promise<Paginated<Sta
 
 /**
  * Returns a paginated list of history entries for a stack, sorted newest-first.
- * Parses epochMs from filenames to sort without fetching content, then fetches
- * only the current page.
+ * The epoch is kept as a string to avoid float64 precision loss on nanosecond timestamps.
  */
 export async function listHistory(
   project: string,
   stack: string,
   page = 1,
   pageSize = 25,
-): Promise<Paginated<PulumiHistoryEntry & { epochMs: number }>> {
+): Promise<Paginated<PulumiHistoryEntry & { epoch: string }>> {
   const prefix = `${PREFIX}/history/${project}/${stack}/`
   const keys = await listKeys(prefix)
 
@@ -118,19 +117,19 @@ export async function listHistory(
     .filter((k) => k.endsWith('.history.json'))
     .map((key) => {
       const filename = key.split('/').pop() ?? ''
-      const epochMs = parseInt(filename.split('-').pop()?.replace('.history.json', '') ?? '0', 10)
-      return { key, epochMs }
+      const epoch = filename.split('-').pop()?.replace('.history.json', '') ?? ''
+      return { key, epoch }
     })
-    .sort((a, b) => b.epochMs - a.epochMs)
+    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
 
   const total = sorted.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const pageSlice = sorted.slice((page - 1) * pageSize, page * pageSize)
 
   const items = await Promise.all(
-    pageSlice.map(async ({ key, epochMs }) => {
+    pageSlice.map(async ({ key, epoch }) => {
       const entry = await s3Json<PulumiHistoryEntry>(key)
-      return { ...entry, epochMs }
+      return { ...entry, epoch }
     }),
   )
 
@@ -150,22 +149,26 @@ export async function listHistoryFiles(project: string, stack: string): Promise<
       const filename = key.split('/').pop() ?? ''
       const isHistory = filename.endsWith('.history.json')
       const suffix = isHistory ? '.history.json' : '.checkpoint.json'
-      const epochMs = parseInt(filename.replace(`${stack}-`, '').replace(suffix, ''), 10)
-      return { key, epochMs, type: isHistory ? 'history' : 'checkpoint' } satisfies HistoryFile
+      const epoch = filename.replace(`${stack}-`, '').replace(suffix, '')
+      return { key, epoch, type: isHistory ? 'history' : 'checkpoint' } satisfies HistoryFile
     })
-    .sort((a, b) => b.epochMs - a.epochMs)
+    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
 }
 
 /**
  * Returns the checkpoint (frozen resource state) for a specific update epoch.
+ * Looks up the actual S3 key via listHistoryFiles rather than reconstructing it,
+ * so the real filename format is always used.
  */
 export async function getCheckpoint(
   project: string,
   stack: string,
-  epochMs: number,
+  epoch: string,
 ): Promise<PulumiCheckpoint> {
-  const key = `${PREFIX}/history/${project}/${stack}/${stack}-${epochMs}.checkpoint.json`
-  return s3Json<PulumiCheckpoint>(key)
+  const files = await listHistoryFiles(project, stack)
+  const file = files.find((f) => f.type === 'checkpoint' && f.epoch === epoch)
+  if (!file) throw new Error(`No checkpoint found for ${project}/${stack} at epoch ${epoch}`)
+  return s3Json<PulumiCheckpoint>(file.key)
 }
 
 /**

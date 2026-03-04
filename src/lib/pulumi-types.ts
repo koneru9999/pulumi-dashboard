@@ -55,7 +55,8 @@ export interface PulumiResource {
 
 export interface HistoryFile {
   key: string
-  epochMs: number
+  /** Raw epoch string from the filename — may be nanoseconds, kept as string to avoid float64 precision loss */
+  epoch: string
   type: 'history' | 'checkpoint'
 }
 

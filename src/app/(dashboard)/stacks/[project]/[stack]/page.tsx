@@ -85,7 +85,7 @@ export default async function StackDetailPage({
   )
 
   const checkpointEpochs = new Set(
-    historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epochMs),
+    historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epoch),
   )
 
   const stackPath = `/stacks/${project}/${stack}`
@@ -160,7 +160,7 @@ export default async function StackDetailPage({
             </TableHeader>
             <TableBody>
               {history.items.map((entry) => (
-                <TableRow key={entry.epochMs}>
+                <TableRow key={entry.epoch}>
                   <TableCell className="text-muted-foreground text-sm">#{entry.version}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="capitalize">
@@ -188,9 +188,9 @@ export default async function StackDetailPage({
                     {entry.message || '—'}
                   </TableCell>
                   <TableCell>
-                    {checkpointEpochs.has(entry.epochMs) ? (
+                    {checkpointEpochs.has(entry.epoch) ? (
                       <Link
-                        href={`${stackPath}/checkpoint/${entry.epochMs}`}
+                        href={`${stackPath}/checkpoint/${entry.epoch}`}
                         className="text-xs text-blue-600 hover:underline whitespace-nowrap"
                       >
                         View snapshot
