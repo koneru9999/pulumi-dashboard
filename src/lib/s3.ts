@@ -1,5 +1,6 @@
 import 'server-only'
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
+import { historyCache } from './cache'
 import type {
   HistoryFile,
   Paginated,
@@ -16,10 +17,25 @@ const PREFIX = '.pulumi'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+// Keys under .pulumi/history/ are immutable once written — safe to cache.
+function isImmutable(key: string): boolean {
+  return key.includes(`${PREFIX}/history/`)
+}
+
 async function s3Json<T>(key: string): Promise<T> {
+  if (isImmutable(key)) {
+    const cached = historyCache.get(key)
+    if (cached) return JSON.parse(cached) as T
+  }
+
   const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
   const body = await res.Body?.transformToString()
   if (!body) throw new Error(`Empty response body for S3 key: ${key}`)
+
+  if (isImmutable(key)) {
+    historyCache.set(key, body, Buffer.byteLength(body, 'utf8'))
+  }
+
   return JSON.parse(body) as T
 }
 
