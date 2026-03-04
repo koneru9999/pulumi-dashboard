@@ -59,6 +59,14 @@ export interface HistoryFile {
   type: 'history' | 'checkpoint'
 }
 
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
 // Derived summary types used by the UI
 export interface StackSummary {
   project: string

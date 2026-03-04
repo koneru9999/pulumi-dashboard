@@ -2,6 +2,7 @@ import 'server-only'
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
 import type {
   HistoryFile,
+  Paginated,
   PulumiCheckpoint,
   PulumiHistoryEntry,
   PulumiStackState,
@@ -46,15 +47,19 @@ async function listKeys(prefix: string): Promise<string[]> {
 // ─── Public API ────────────────────────────────────────────────────────────
 
 /**
- * Returns all {project, stack} combinations by listing
- * .pulumi/stacks/{project}/{stack}.json (excluding .json.bak)
+ * Returns a paginated list of stacks, sorted alphabetically by project/stack.
+ * Only fetches S3 content for the current page — key listing is cheap.
  */
-export async function listStacks(): Promise<StackSummary[]> {
+export async function listStacks(page = 1, pageSize = 25): Promise<Paginated<StackSummary>> {
   const keys = await listKeys(`${PREFIX}/stacks/`)
-  const stackKeys = keys.filter((k) => k.endsWith('.json') && !k.endsWith('.json.bak'))
+  const stackKeys = keys.filter((k) => k.endsWith('.json') && !k.endsWith('.json.bak')).sort()
 
-  return Promise.all(
-    stackKeys.map(async (key) => {
+  const total = stackKeys.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const pageKeys = stackKeys.slice((page - 1) * pageSize, page * pageSize)
+
+  const items = await Promise.all(
+    pageKeys.map(async (key) => {
       // .pulumi/stacks/{project}/{stack}.json
       const parts = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '').split('/')
       const project = parts[0]
@@ -75,30 +80,45 @@ export async function listStacks(): Promise<StackSummary[]> {
       }
     }),
   )
+
+  return { items, total, page, pageSize, totalPages }
 }
 
 /**
- * Returns history entries for a stack, sorted newest-first.
+ * Returns a paginated list of history entries for a stack, sorted newest-first.
+ * Parses epochMs from filenames to sort without fetching content, then fetches
+ * only the current page.
  */
 export async function listHistory(
   project: string,
   stack: string,
-): Promise<(PulumiHistoryEntry & { epochMs: number })[]> {
+  page = 1,
+  pageSize = 25,
+): Promise<Paginated<PulumiHistoryEntry & { epochMs: number }>> {
   const prefix = `${PREFIX}/history/${project}/${stack}/`
   const keys = await listKeys(prefix)
 
-  const historyKeys = keys.filter((k) => k.endsWith('.history.json'))
-
-  const entries = await Promise.all(
-    historyKeys.map(async (key) => {
-      const filename = key.split('/').pop() ?? '' // {stack}-{epochMs}.history.json
+  const sorted = keys
+    .filter((k) => k.endsWith('.history.json'))
+    .map((key) => {
+      const filename = key.split('/').pop() ?? ''
       const epochMs = parseInt(filename.split('-').pop()?.replace('.history.json', '') ?? '0', 10)
+      return { key, epochMs }
+    })
+    .sort((a, b) => b.epochMs - a.epochMs)
+
+  const total = sorted.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const pageSlice = sorted.slice((page - 1) * pageSize, page * pageSize)
+
+  const items = await Promise.all(
+    pageSlice.map(async ({ key, epochMs }) => {
       const entry = await s3Json<PulumiHistoryEntry>(key)
       return { ...entry, epochMs }
     }),
   )
 
-  return entries.sort((a, b) => b.epochMs - a.epochMs)
+  return { items, total, page, pageSize, totalPages }
 }
 
 /**

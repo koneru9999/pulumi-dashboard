@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Pagination } from '@/components/pagination'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -13,10 +14,16 @@ import { listStacks } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
 
-export default async function StacksPage() {
-  const stacks = await listStacks()
+export default async function StacksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10))
 
-  // Group by project
+  const { items: stacks, total, totalPages } = await listStacks(page)
+
   const byProject = stacks.reduce<Record<string, typeof stacks>>((acc, s) => {
     if (!acc[s.project]) acc[s.project] = []
     acc[s.project].push(s)
@@ -28,9 +35,7 @@ export default async function StacksPage() {
       <div>
         <h1 className="text-2xl font-bold">Stacks</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          {stacks.length} stack{stacks.length !== 1 ? 's' : ''} across{' '}
-          {Object.keys(byProject).length} project
-          {Object.keys(byProject).length !== 1 ? 's' : ''}
+          {total} stack{total !== 1 ? 's' : ''}
         </p>
       </div>
 
@@ -76,6 +81,8 @@ export default async function StacksPage() {
           </CardContent>
         </Card>
       ))}
+
+      <Pagination page={page} totalPages={totalPages} basePath="/" />
     </div>
   )
 }

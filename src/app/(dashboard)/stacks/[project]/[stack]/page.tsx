@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Pagination } from '@/components/pagination'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -14,6 +15,8 @@ import type { PulumiHistoryEntry } from '@/lib/pulumi-types'
 import { getStackState, listHistory, listHistoryFiles } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
+
+const RESOURCE_PAGE_SIZE = 50
 
 const resultVariant: Record<PulumiHistoryEntry['result'], 'default' | 'destructive' | 'secondary'> =
   {
@@ -50,10 +53,15 @@ function ResourceChangeBadges({ changes }: { changes?: PulumiHistoryEntry['resou
 
 export default async function StackDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ project: string; stack: string }>
+  searchParams: Promise<{ historyPage?: string; resourcePage?: string }>
 }) {
   const { project, stack } = await params
+  const { historyPage: hp, resourcePage: rp } = await searchParams
+  const historyPage = Math.max(1, parseInt(hp ?? '1', 10))
+  const resourcePage = Math.max(1, parseInt(rp ?? '1', 10))
 
   let history: Awaited<ReturnType<typeof listHistory>>
   let state: Awaited<ReturnType<typeof getStackState>>
@@ -61,7 +69,7 @@ export default async function StackDetailPage({
 
   try {
     ;[history, state, historyFiles] = await Promise.all([
-      listHistory(project, stack),
+      listHistory(project, stack, historyPage),
       getStackState(project, stack),
       listHistoryFiles(project, stack),
     ])
@@ -69,10 +77,18 @@ export default async function StackDetailPage({
     notFound()
   }
 
-  const resources = state.deployment?.resources ?? []
+  const allResources = state.deployment?.resources ?? []
+  const resourceTotalPages = Math.max(1, Math.ceil(allResources.length / RESOURCE_PAGE_SIZE))
+  const resources = allResources.slice(
+    (resourcePage - 1) * RESOURCE_PAGE_SIZE,
+    resourcePage * RESOURCE_PAGE_SIZE,
+  )
+
   const checkpointEpochs = new Set(
     historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epochMs),
   )
+
+  const stackPath = `/stacks/${project}/${stack}`
 
   return (
     <div className="space-y-8">
@@ -94,7 +110,7 @@ export default async function StackDetailPage({
             <CardTitle className="text-sm text-muted-foreground font-normal">Resources</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{resources.length}</p>
+            <p className="text-2xl font-bold">{allResources.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -105,7 +121,9 @@ export default async function StackDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {history[0] ? new Date(history[0].startTime * 1000).toLocaleDateString() : '—'}
+              {history.items[0]
+                ? new Date(history.items[0].startTime * 1000).toLocaleDateString()
+                : '—'}
             </p>
           </CardContent>
         </Card>
@@ -116,7 +134,7 @@ export default async function StackDetailPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{history.length}</p>
+            <p className="text-2xl font-bold">{history.total}</p>
           </CardContent>
         </Card>
       </div>
@@ -141,7 +159,7 @@ export default async function StackDetailPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {history.map((entry) => (
+              {history.items.map((entry) => (
                 <TableRow key={entry.epochMs}>
                   <TableCell className="text-muted-foreground text-sm">#{entry.version}</TableCell>
                   <TableCell>
@@ -172,7 +190,7 @@ export default async function StackDetailPage({
                   <TableCell>
                     {checkpointEpochs.has(entry.epochMs) ? (
                       <Link
-                        href={`/stacks/${project}/${stack}/checkpoint/${entry.epochMs}`}
+                        href={`${stackPath}/checkpoint/${entry.epochMs}`}
                         className="text-xs text-blue-600 hover:underline whitespace-nowrap"
                       >
                         View snapshot
@@ -181,7 +199,7 @@ export default async function StackDetailPage({
                   </TableCell>
                 </TableRow>
               ))}
-              {history.length === 0 && (
+              {history.items.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No history found.
@@ -190,13 +208,20 @@ export default async function StackDetailPage({
               )}
             </TableBody>
           </Table>
+          <Pagination
+            page={historyPage}
+            totalPages={history.totalPages}
+            basePath={stackPath}
+            paramName="historyPage"
+            otherParams={rp ? { resourcePage: rp } : undefined}
+          />
         </CardContent>
       </Card>
 
       {/* Resources */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Resources ({resources.length})</CardTitle>
+          <CardTitle className="text-base">Resources ({allResources.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -217,6 +242,13 @@ export default async function StackDetailPage({
               ))}
             </TableBody>
           </Table>
+          <Pagination
+            page={resourcePage}
+            totalPages={resourceTotalPages}
+            basePath={stackPath}
+            paramName="resourcePage"
+            otherParams={hp ? { historyPage: hp } : undefined}
+          />
         </CardContent>
       </Card>
     </div>
