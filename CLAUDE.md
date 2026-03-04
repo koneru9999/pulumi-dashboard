@@ -6,6 +6,13 @@ This project follows the `node-typescript` skillset. Apply these rules consisten
 
 ---
 
+## Git
+
+- Split commits by logical concern — one commit per layer (deps, tooling, auth, data, UI)
+- Do not add `Co-Authored-By` trailers to commit messages
+
+---
+
 ## Formatting & linting
 
 Tooling: **Biome v2** (`biome.json`).
