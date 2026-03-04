@@ -1,32 +1,18 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Pagination } from '@/components/pagination'
-import { Badge } from '@/components/ui/badge'
+import { RelativeTime } from '@/components/relative-time'
+import { ResourceTree } from '@/components/resource-tree'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { getCheckpoint } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
 
-const PAGE_SIZE = 50
-
 export default async function CheckpointPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ project: string; stack: string; epochMs: string }>
-  searchParams: Promise<{ page?: string }>
 }) {
   const { project, stack, epochMs } = await params
-  const { page: pageParam } = await searchParams
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10))
 
   let checkpoint: Awaited<ReturnType<typeof getCheckpoint>>
 
@@ -36,11 +22,8 @@ export default async function CheckpointPage({
     notFound()
   }
 
-  const allResources = checkpoint.deployment?.resources ?? []
-  const manifest = checkpoint.deployment?.manifest
-  const totalPages = Math.max(1, Math.ceil(allResources.length / PAGE_SIZE))
-  const resources = allResources.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const checkpointPath = `/stacks/${project}/${stack}/checkpoint/${epochMs}`
+  const allResources = checkpoint.checkpoint?.latest?.resources ?? []
+  const manifest = checkpoint.checkpoint?.latest?.manifest
 
   return (
     <div className="space-y-8">
@@ -81,7 +64,7 @@ export default async function CheckpointPage({
           </CardHeader>
           <CardContent>
             <p className="text-lg font-bold">
-              {manifest?.time ? new Date(manifest.time).toLocaleString() : '—'}
+              {manifest?.time ? <RelativeTime ms={new Date(manifest.time).getTime()} /> : '—'}
             </p>
           </CardContent>
         </Card>
@@ -103,42 +86,7 @@ export default async function CheckpointPage({
           <CardTitle className="text-base">Resources ({allResources.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead>URN</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {resources.map((r) => (
-                <TableRow key={r.urn}>
-                  <TableCell className="text-sm font-mono whitespace-nowrap">{r.type}</TableCell>
-                  <TableCell>
-                    {r.id ? (
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {r.id}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-mono truncate max-w-md">
-                    {r.urn}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {resources.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                    No resources in this snapshot.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <Pagination page={page} totalPages={totalPages} basePath={checkpointPath} />
+          <ResourceTree resources={allResources} />
         </CardContent>
       </Card>
     </div>

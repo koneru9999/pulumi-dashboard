@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Pagination } from '@/components/pagination'
+import { RelativeTime } from '@/components/relative-time'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -72,7 +73,11 @@ export default async function StacksPage({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {s.lastUpdated ? new Date(s.lastUpdated).toLocaleString() : '—'}
+                      {s.lastUpdated ? (
+                        <RelativeTime ms={new Date(s.lastUpdated).getTime()} />
+                      ) : (
+                        '—'
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

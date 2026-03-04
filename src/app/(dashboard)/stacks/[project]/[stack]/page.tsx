@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Pagination } from '@/components/pagination'
+import { RelativeTime } from '@/components/relative-time'
+import { ResourceTree } from '@/components/resource-tree'
+import { StackOutputs } from '@/components/stack-outputs'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -11,12 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import type { PulumiHistoryEntry } from '@/lib/pulumi-types'
 import { getStackState, listHistory, listHistoryFiles } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
-
-const RESOURCE_PAGE_SIZE = 50
 
 const resultVariant: Record<PulumiHistoryEntry['result'], 'default' | 'destructive' | 'secondary'> =
   {
@@ -56,12 +58,11 @@ export default async function StackDetailPage({
   searchParams,
 }: {
   params: Promise<{ project: string; stack: string }>
-  searchParams: Promise<{ historyPage?: string; resourcePage?: string }>
+  searchParams: Promise<{ historyPage?: string }>
 }) {
   const { project, stack } = await params
-  const { historyPage: hp, resourcePage: rp } = await searchParams
+  const { historyPage: hp } = await searchParams
   const historyPage = Math.max(1, parseInt(hp ?? '1', 10))
-  const resourcePage = Math.max(1, parseInt(rp ?? '1', 10))
 
   let history: Awaited<ReturnType<typeof listHistory>>
   let state: Awaited<ReturnType<typeof getStackState>>
@@ -77,12 +78,11 @@ export default async function StackDetailPage({
     notFound()
   }
 
-  const allResources = state.deployment?.resources ?? []
-  const resourceTotalPages = Math.max(1, Math.ceil(allResources.length / RESOURCE_PAGE_SIZE))
-  const resources = allResources.slice(
-    (resourcePage - 1) * RESOURCE_PAGE_SIZE,
-    resourcePage * RESOURCE_PAGE_SIZE,
-  )
+  const allResources = state.checkpoint?.latest?.resources ?? []
+  const deploymentOutputs = state.checkpoint?.latest?.outputs ?? {}
+  const stackResourceOutputs =
+    allResources.find((r) => r.type === 'pulumi:pulumi:Stack')?.outputs ?? {}
+  const stackOutputs = { ...stackResourceOutputs, ...deploymentOutputs } as Record<string, unknown>
 
   const checkpointEpochs = new Set(
     historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epoch),
@@ -121,9 +121,7 @@ export default async function StackDetailPage({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {history.items[0]
-                ? new Date(history.items[0].startTime * 1000).toLocaleDateString()
-                : '—'}
+              {history.items[0] ? <RelativeTime ms={history.items[0].startTime * 1000} /> : '—'}
             </p>
           </CardContent>
         </Card>
@@ -182,7 +180,7 @@ export default async function StackDetailPage({
                     {formatDuration(entry.startTime, entry.endTime)}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    {new Date(entry.startTime * 1000).toLocaleString()}
+                    <RelativeTime ms={entry.startTime * 1000} />
                   </TableCell>
                   <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
                     {entry.message || '—'}
@@ -213,44 +211,31 @@ export default async function StackDetailPage({
             totalPages={history.totalPages}
             basePath={stackPath}
             paramName="historyPage"
-            otherParams={rp ? { resourcePage: rp } : undefined}
           />
         </CardContent>
       </Card>
 
-      {/* Resources */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Resources ({allResources.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>URN</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {resources.map((r) => (
-                <TableRow key={r.urn}>
-                  <TableCell className="text-sm font-mono">{r.type}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-mono truncate max-w-md">
-                    {r.urn}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={resourcePage}
-            totalPages={resourceTotalPages}
-            basePath={stackPath}
-            paramName="resourcePage"
-            otherParams={hp ? { historyPage: hp } : undefined}
-          />
-        </CardContent>
-      </Card>
+      {/* Outputs + Resources tabs */}
+      <TabsRoot defaultValue="resources" className="gap-4">
+        <TabsList>
+          <TabsTrigger value="resources">Resources ({allResources.length})</TabsTrigger>
+          <TabsTrigger value="outputs">Outputs ({Object.keys(stackOutputs).length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="resources">
+          <Card>
+            <CardContent className="p-0">
+              <ResourceTree resources={allResources} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="outputs">
+          <Card>
+            <CardContent className="p-0">
+              <StackOutputs outputs={stackOutputs} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </TabsRoot>
     </div>
   )
 }
