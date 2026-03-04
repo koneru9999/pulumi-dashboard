@@ -16,29 +16,31 @@ export interface PulumiHistoryEntry {
   version: number
 }
 
+interface PulumiDeployment {
+  manifest: {
+    time: string
+    magic: string
+    version: string
+  }
+  resources?: PulumiResource[]
+  outputs?: Record<string, unknown>
+}
+
 // Pulumi checkpoint — .pulumi/history/{project}/{stack}/{stack}-{epoch_ms}.checkpoint.json
 export interface PulumiCheckpoint {
   version: number
-  deployment?: {
-    manifest: {
-      time: string
-      magic: string
-      version: string
-    }
-    resources?: PulumiResource[]
+  checkpoint?: {
+    stack: string
+    latest?: PulumiDeployment
   }
 }
 
 // Pulumi current stack state — .pulumi/stacks/{project}/{stack}.json
 export interface PulumiStackState {
   version: number
-  deployment?: {
-    manifest: {
-      time: string
-      magic: string
-      version: string
-    }
-    resources?: PulumiResource[]
+  checkpoint?: {
+    stack: string
+    latest?: PulumiDeployment
   }
 }
 

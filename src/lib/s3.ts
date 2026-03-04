@@ -83,8 +83,8 @@ export async function listStacks(page = 1, pageSize = 25): Promise<Paginated<Sta
 
       try {
         const state = await s3Json<PulumiStackState>(key)
-        const resources = state.deployment?.resources ?? []
-        const manifest = state.deployment?.manifest
+        const resources = state.checkpoint?.latest?.resources ?? []
+        const manifest = state.checkpoint?.latest?.manifest
         return {
           project,
           stack,
