@@ -1,22 +1,17 @@
 import type { Metadata } from 'next'
-import { Geist_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { TooltipProvider } from '@/components/ui/tooltip'
-import './globals.css'
+import "./globals.css";
 
-const fontSans = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-sans',
-})
+const fontSans = Inter({
+    subsets: ["latin"],
+    variable: "--font-sans",
+});
 
-const fontSerif = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-serif',
-})
-
-const fontMono = Geist_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-})
+const fontMono = JetBrains_Mono({
+    subsets: ["latin"],
+    variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: 'Pulumi Dashboard',
@@ -31,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
+        className={`${fontSans.variable} ${fontMono.variable} antialiased`}
       >
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: FOUC prevention inline script
