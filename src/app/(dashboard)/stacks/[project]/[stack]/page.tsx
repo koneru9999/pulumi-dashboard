@@ -145,16 +145,13 @@ export default async function StackDetailPage({
 
         <TabsContent value="history">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Update History</CardTitle>
-                <form action={refreshStackHistoryAction.bind(null, project, stack)}>
-                  <Button type="submit" variant="ghost" size="icon-sm" title="Refresh history">
-                    ↻
-                  </Button>
-                </form>
-              </div>
-            </CardHeader>
+            <div className="flex justify-end px-2 pt-2">
+              <form action={refreshStackHistoryAction.bind(null, project, stack)}>
+                <Button type="submit" variant="ghost" size="icon-sm" title="Refresh history">
+                  ↻
+                </Button>
+              </form>
+            </div>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
