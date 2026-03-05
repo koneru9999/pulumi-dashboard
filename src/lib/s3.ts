@@ -1,5 +1,6 @@
 import 'server-only'
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
+import { getBuckets } from './buckets'
 import { historyCache } from './cache'
 import type {
   HistoryFile,
@@ -11,8 +12,6 @@ import type {
 } from './pulumi-types'
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' })
-const BUCKET = process.env.PULUMI_STATE_BUCKET
-if (!BUCKET) throw new Error('PULUMI_STATE_BUCKET env var is required')
 const PREFIX = '.pulumi'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -22,31 +21,32 @@ function isImmutable(key: string): boolean {
   return key.includes(`${PREFIX}/history/`)
 }
 
-async function s3Json<T>(key: string): Promise<T> {
+async function s3Json<T>(bucket: string, key: string): Promise<T> {
+  const cacheKey = `${bucket}:${key}`
   if (isImmutable(key)) {
-    const cached = historyCache.get(key)
+    const cached = historyCache.get(cacheKey)
     if (cached) return JSON.parse(cached) as T
   }
 
-  const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
   const body = await res.Body?.transformToString()
   if (!body) throw new Error(`Empty response body for S3 key: ${key}`)
 
   if (isImmutable(key)) {
-    historyCache.set(key, body, Buffer.byteLength(body, 'utf8'))
+    historyCache.set(cacheKey, body, Buffer.byteLength(body, 'utf8'))
   }
 
   return JSON.parse(body) as T
 }
 
-async function listKeys(prefix: string): Promise<string[]> {
+async function listKeys(bucket: string, prefix: string): Promise<string[]> {
   const keys: string[] = []
   let continuationToken: string | undefined
 
   do {
     const res = await s3.send(
       new ListObjectsV2Command({
-        Bucket: BUCKET,
+        Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: continuationToken,
       }),
@@ -63,48 +63,57 @@ async function listKeys(prefix: string): Promise<string[]> {
 // ─── Public API ────────────────────────────────────────────────────────────
 
 /**
- * Returns a paginated list of stacks, sorted alphabetically by project/stack.
+ * Returns a paginated list of stacks across all configured buckets, sorted alphabetically.
  * Only fetches S3 content for the current page — key listing is cheap.
  */
 export async function listStacks(
   page = 1,
   pageSize = 25,
   query = '',
+  envFilter = '',
 ): Promise<Paginated<StackSummary>> {
-  const keys = await listKeys(`${PREFIX}/stacks/`)
+  const buckets = getBuckets()
   const q = query.trim().toLowerCase()
-  const stackKeys = keys
-    .filter((k) => k.endsWith('.json') && !k.endsWith('.json.bak'))
-    .filter((k) => {
-      if (!q) return true
-      const name = k.replace(`${PREFIX}/stacks/`, '').replace('.json', '')
-      return name.toLowerCase().includes(q)
-    })
-    .sort()
 
-  const total = stackKeys.length
+  const allEntries: { bucket: string; env: string; envLabel: string; key: string }[] = []
+
+  for (const cfg of buckets) {
+    if (envFilter && cfg.id !== envFilter) continue
+    const keys = await listKeys(cfg.bucket, `${PREFIX}/stacks/`)
+    for (const key of keys) {
+      if (!key.endsWith('.json') || key.endsWith('.json.bak')) continue
+      const name = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '')
+      if (q && !name.toLowerCase().includes(q)) continue
+      allEntries.push({ bucket: cfg.bucket, env: cfg.id, envLabel: cfg.label, key })
+    }
+  }
+
+  allEntries.sort((a, b) => `${a.env}/${a.key}`.localeCompare(`${b.env}/${b.key}`))
+
+  const total = allEntries.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const pageKeys = stackKeys.slice((page - 1) * pageSize, page * pageSize)
+  const pageSlice = allEntries.slice((page - 1) * pageSize, page * pageSize)
 
   const items = await Promise.all(
-    pageKeys.map(async (key) => {
-      // .pulumi/stacks/{project}/{stack}.json
+    pageSlice.map(async ({ bucket, env, envLabel, key }) => {
       const parts = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '').split('/')
       const project = parts[0]
       const stack = parts[1]
 
       try {
-        const state = await s3Json<PulumiStackState>(key)
+        const state = await s3Json<PulumiStackState>(bucket, key)
         const resources = state.checkpoint?.latest?.resources ?? []
         const manifest = state.checkpoint?.latest?.manifest
         return {
+          env,
+          envLabel,
           project,
           stack,
           lastUpdated: manifest?.time,
           resourceCount: resources.length,
         } satisfies StackSummary
       } catch {
-        return { project, stack } satisfies StackSummary
+        return { env, envLabel, project, stack } satisfies StackSummary
       }
     }),
   )
@@ -114,16 +123,16 @@ export async function listStacks(
 
 /**
  * Returns a paginated list of history entries for a stack, sorted newest-first.
- * The epoch is kept as a string to avoid float64 precision loss on nanosecond timestamps.
  */
 export async function listHistory(
+  bucket: string,
   project: string,
   stack: string,
   page = 1,
   pageSize = 25,
 ): Promise<Paginated<PulumiHistoryEntry & { epoch: string }>> {
   const prefix = `${PREFIX}/history/${project}/${stack}/`
-  const keys = await listKeys(prefix)
+  const keys = await listKeys(bucket, prefix)
 
   const sorted = keys
     .filter((k) => k.endsWith('.history.json'))
@@ -140,7 +149,7 @@ export async function listHistory(
 
   const items = await Promise.all(
     pageSlice.map(async ({ key, epoch }, i) => {
-      const entry = await s3Json<PulumiHistoryEntry>(key)
+      const entry = await s3Json<PulumiHistoryEntry>(bucket, key)
       const version = total - ((page - 1) * pageSize + i)
       return { ...entry, epoch, version }
     }),
@@ -152,9 +161,13 @@ export async function listHistory(
 /**
  * Returns a list of all history + checkpoint file metadata for a stack, sorted newest-first.
  */
-export async function listHistoryFiles(project: string, stack: string): Promise<HistoryFile[]> {
+export async function listHistoryFiles(
+  bucket: string,
+  project: string,
+  stack: string,
+): Promise<HistoryFile[]> {
   const prefix = `${PREFIX}/history/${project}/${stack}/`
-  const keys = await listKeys(prefix)
+  const keys = await listKeys(bucket, prefix)
 
   return keys
     .filter((k) => k.endsWith('.history.json') || k.endsWith('.checkpoint.json'))
@@ -170,24 +183,27 @@ export async function listHistoryFiles(project: string, stack: string): Promise<
 
 /**
  * Returns the checkpoint (frozen resource state) for a specific update epoch.
- * Looks up the actual S3 key via listHistoryFiles rather than reconstructing it,
- * so the real filename format is always used.
  */
 export async function getCheckpoint(
+  bucket: string,
   project: string,
   stack: string,
   epoch: string,
 ): Promise<PulumiCheckpoint> {
-  const files = await listHistoryFiles(project, stack)
+  const files = await listHistoryFiles(bucket, project, stack)
   const file = files.find((f) => f.type === 'checkpoint' && f.epoch === epoch)
   if (!file) throw new Error(`No checkpoint found for ${project}/${stack} at epoch ${epoch}`)
-  return s3Json<PulumiCheckpoint>(file.key)
+  return s3Json<PulumiCheckpoint>(bucket, file.key)
 }
 
 /**
  * Returns the current stack state (resources, manifest).
  */
-export async function getStackState(project: string, stack: string): Promise<PulumiStackState> {
+export async function getStackState(
+  bucket: string,
+  project: string,
+  stack: string,
+): Promise<PulumiStackState> {
   const key = `${PREFIX}/stacks/${project}/${stack}.json`
-  return s3Json<PulumiStackState>(key)
+  return s3Json<PulumiStackState>(bucket, key)
 }

@@ -72,6 +72,8 @@ export interface Paginated<T> {
 
 // Derived summary types used by the UI
 export interface StackSummary {
+  env: string
+  envLabel: string
   project: string
   stack: string
   lastUpdated?: string
