@@ -114,12 +114,26 @@ export async function listStacks(
         const state = await s3Json<PulumiStackState>(bucket, key)
         const resources = state.checkpoint?.latest?.resources ?? []
         const manifest = state.checkpoint?.latest?.manifest
+
+        let lastResult: PulumiHistoryEntry['result'] | undefined
+        try {
+          const histFiles = await listHistoryFiles(bucket, project, stack)
+          const latest = histFiles.find((f) => f.type === 'history')
+          if (latest) {
+            const entry = await s3Json<PulumiHistoryEntry>(bucket, latest.key)
+            lastResult = entry.result
+          }
+        } catch {
+          // history may not exist yet
+        }
+
         return {
           env,
           envLabel,
           project,
           stack,
           lastUpdated: manifest?.time,
+          lastResult,
           resourceCount: resources.length,
         } satisfies StackSummary
       } catch {

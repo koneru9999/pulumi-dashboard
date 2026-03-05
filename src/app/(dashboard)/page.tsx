@@ -4,6 +4,7 @@ import { refreshStackIndexAction } from '@/app/actions'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
 import { StackSearch } from '@/components/stack-search'
+import { StatusIcon } from '@/components/status-icon'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,7 +29,7 @@ export default async function StacksPage({
   const page = Math.max(1, parseInt(pageParam ?? '1', 10))
   const query = q ?? ''
 
-  const { items: stacks, total, totalPages } = await listStacks(page, 25, query)
+  const { items: stacks, total, totalPages } = await listStacks(page, 20, query)
 
   const byProject = stacks.reduce<Record<string, typeof stacks>>((acc, s) => {
     if (!acc[s.project]) {
@@ -90,13 +91,7 @@ export default async function StacksPage({
                               {s.stack}
                             </Link>
                             {projectMultiEnv && (
-                              <span
-                                className="text-xs px-1.5 py-0.5 rounded"
-                                style={{
-                                  background: 'var(--muted)',
-                                  color: 'var(--muted-foreground)',
-                                }}
-                              >
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                                 {s.envLabel}
                               </span>
                             )}
@@ -110,11 +105,14 @@ export default async function StacksPage({
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {s.lastUpdated ? (
-                            <RelativeTime ms={new Date(s.lastUpdated).getTime()} />
-                          ) : (
-                            '—'
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {s.lastUpdated ? (
+                              <RelativeTime ms={new Date(s.lastUpdated).getTime()} />
+                            ) : (
+                              '—'
+                            )}
+                            {s.lastResult && <StatusIcon result={s.lastResult} size={14} />}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

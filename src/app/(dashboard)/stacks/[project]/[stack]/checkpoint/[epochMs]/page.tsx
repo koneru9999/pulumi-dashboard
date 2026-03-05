@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { RelativeTime } from '@/components/relative-time'
 import { ResourceTree } from '@/components/resource-tree'
+import { StatusIcon } from '@/components/status-icon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import type { PulumiCheckpoint, PulumiHistoryEntry, PulumiResource } from '@/lib/pulumi-types'
@@ -263,62 +264,7 @@ export default async function CheckpointPage({
         <span>/</span>
         <span className="text-foreground font-medium flex items-center gap-1.5">
           Snapshot {manifest?.time ? format(new Date(manifest.time), 'do MMMM yyyy, p') : epochMs}
-          {historyEntry?.result === 'succeeded' && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width={14}
-              height={14}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: '#22c55e' }}
-              aria-label="Succeeded"
-              role="img"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-          )}
-          {historyEntry?.result === 'failed' && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width={14}
-              height={14}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: '#ef4444' }}
-              aria-label="Failed"
-              role="img"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="m15 9-6 6M9 9l6 6" />
-            </svg>
-          )}
-          {historyEntry?.result === 'in-progress' && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width={14}
-              height={14}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: '#eab308' }}
-              aria-label="In progress"
-              role="img"
-            >
-              <path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
-            </svg>
-          )}
+          {historyEntry?.result && <StatusIcon result={historyEntry.result} size={14} />}
         </span>
       </div>
 
