@@ -59,6 +59,8 @@ export default async function StacksPage({
         </div>
       </div>
 
+      <Pagination page={page} totalPages={totalPages} basePath="/" className="border-b" />
+
       {Object.entries(byProject).map(([project, groupStacks]) => {
         const projectMultiEnv = new Set(groupStacks.map((s) => s.env)).size > 1
         return (

@@ -157,6 +157,13 @@ export default async function StackDetailPage({
         <TabsContent value="history">
           <Card>
             <CardContent className="p-0">
+              <Pagination
+                page={historyPage}
+                totalPages={history.totalPages}
+                basePath={stackPath}
+                paramName="historyPage"
+                className="border-b"
+              />
               <Table>
                 <TableHeader>
                   <TableRow>

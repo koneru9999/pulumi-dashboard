@@ -9,6 +9,8 @@ interface PaginationProps {
   paramName?: string
   /** Other search params to preserve in every link, e.g. { historyPage: "2" } */
   otherParams?: Record<string, string>
+  /** CSS class for the wrapper div. Defaults to "border-t". Use "border-b" for top placement. */
+  className?: string
 }
 
 function buildHref(
@@ -54,6 +56,7 @@ export function Pagination({
   basePath,
   paramName = 'page',
   otherParams,
+  className = 'border-t',
 }: PaginationProps) {
   if (totalPages <= 1) {
     return null
@@ -62,7 +65,7 @@ export function Pagination({
   const pages = pageNumbers(page, totalPages)
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
+    <div className={`flex items-center justify-between px-4 py-3 text-sm ${className}`}>
       <span className="text-muted-foreground">
         Page {page} of {totalPages}
       </span>
