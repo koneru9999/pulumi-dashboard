@@ -43,7 +43,10 @@ function TabsTrigger({ value, className, ...props }: React.ComponentProps<typeof
   return (
     <Tabs.Trigger
       value={value}
-      className={cn('px-3 py-1.5 text-base transition-colors rounded-md', className)}
+      className={cn(
+        'px-3 py-1.5 text-base transition-colors rounded-md hover:bg-accent',
+        className,
+      )}
       style={{
         cursor: 'pointer',
         color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)',
