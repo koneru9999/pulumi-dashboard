@@ -327,9 +327,7 @@ export default async function CheckpointPage({
       </div>
 
       {/* Summary cards */}
-      <div
-        className={`grid gap-4 ${historyEntry?.environment['ci.build.url'] ? 'grid-cols-4' : 'grid-cols-3'}`}
-      >
+      <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground font-normal">
@@ -350,6 +348,16 @@ export default async function CheckpointPage({
             <p className="text-lg font-bold">
               {manifest?.time ? <RelativeTime ms={new Date(manifest.time).getTime()} /> : '—'}
             </p>
+            {historyEntry?.environment['ci.build.url'] && (
+              <a
+                href={historyEntry.environment['ci.build.url']}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:underline mt-1 block"
+              >
+                CI build ↗
+              </a>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -362,23 +370,6 @@ export default async function CheckpointPage({
             <p className="text-lg font-bold font-mono">{manifest?.version ?? '—'}</p>
           </CardContent>
         </Card>
-        {historyEntry?.environment['ci.build.url'] && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground font-normal">CI build</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <a
-                href={historyEntry.environment['ci.build.url']}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium hover:underline break-all"
-              >
-                {historyEntry.environment['ci.build.url']}
-              </a>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Tabs */}
