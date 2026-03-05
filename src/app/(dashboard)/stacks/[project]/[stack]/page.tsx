@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { refreshStackHistoryAction } from '@/app/actions'
+import { refreshStackAction } from '@/app/actions'
 import { ClickableRow } from '@/components/clickable-row'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
@@ -91,14 +91,21 @@ export default async function StackDetailPage({
   return (
     <div className="space-y-8">
       {/* Breadcrumb */}
-      <div className="text-sm text-muted-foreground flex items-center gap-1">
-        <Link href="/" className="hover:underline">
-          Stacks
-        </Link>
-        <span>/</span>
-        <span>{project}</span>
-        <span>/</span>
-        <span className="text-foreground font-medium">{stack}</span>
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground flex items-center gap-1">
+          <Link href="/" className="hover:underline">
+            Stacks
+          </Link>
+          <span>/</span>
+          <span>{project}</span>
+          <span>/</span>
+          <span className="text-foreground font-medium">{stack}</span>
+        </div>
+        <form action={refreshStackAction.bind(null, project, stack)}>
+          <Button type="submit" variant="ghost" size="icon-sm" title="Refresh stack data">
+            ↻
+          </Button>
+        </form>
       </div>
 
       {/* Summary */}
@@ -145,13 +152,6 @@ export default async function StackDetailPage({
 
         <TabsContent value="history">
           <Card>
-            <div className="flex justify-end px-2 pt-2">
-              <form action={refreshStackHistoryAction.bind(null, project, stack)}>
-                <Button type="submit" variant="ghost" size="icon-sm" title="Refresh history">
-                  ↻
-                </Button>
-              </form>
-            </div>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>

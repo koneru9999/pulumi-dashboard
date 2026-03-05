@@ -9,7 +9,7 @@ export async function refreshStackIndexAction() {
   revalidatePath('/')
 }
 
-export async function refreshStackHistoryAction(project: string, stack: string) {
+export async function refreshStackAction(project: string, stack: string) {
   const entry = await lookupStack(project, stack)
   clearHistoryFilesCache(entry.bucket, project, stack)
   revalidatePath(`/stacks/${project}/${stack}`)
