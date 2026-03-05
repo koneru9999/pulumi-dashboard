@@ -165,55 +165,57 @@ export default async function StackDetailPage({
                     <TableHead>Duration</TableHead>
                     <TableHead>Started</TableHead>
                     <TableHead>Message</TableHead>
-                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {history.items.map((entry) => (
-                    <TableRow key={entry.epoch}>
-                      <TableCell className="text-muted-foreground text-sm">
-                        #{entry.version}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {entry.kind}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={resultVariant[entry.result] ?? 'secondary'}
-                          className="capitalize"
-                        >
-                          {entry.result}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <ResourceChangeBadges changes={entry.resourceChanges} />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDuration(entry.startTime, entry.endTime)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        <RelativeTime ms={entry.startTime * 1000} />
-                      </TableCell>
-                      <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
-                        {entry.message || '—'}
-                      </TableCell>
-                      <TableCell>
-                        {checkpointEpochs.has(entry.epoch) ? (
-                          <Link
-                            href={`${stackPath}/checkpoint/${entry.epoch}`}
-                            className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                  {history.items.map((entry) => {
+                    const hasSnapshot = checkpointEpochs.has(entry.epoch)
+                    return (
+                      <TableRow
+                        key={entry.epoch}
+                        className={hasSnapshot ? 'relative cursor-pointer' : undefined}
+                      >
+                        <TableCell className="text-muted-foreground text-sm">
+                          {hasSnapshot && (
+                            <Link
+                              href={`${stackPath}/checkpoint/${entry.epoch}`}
+                              className="absolute inset-0"
+                              aria-label={`View snapshot for version ${entry.version}`}
+                            />
+                          )}
+                          #{entry.version}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {entry.kind}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={resultVariant[entry.result] ?? 'secondary'}
+                            className="capitalize"
                           >
-                            View snapshot
-                          </Link>
-                        ) : null}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            {entry.result}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <ResourceChangeBadges changes={entry.resourceChanges} />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDuration(entry.startTime, entry.endTime)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                          <RelativeTime ms={entry.startTime * 1000} />
+                        </TableCell>
+                        <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
+                          {entry.message || '—'}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                   {history.items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No history found.
                       </TableCell>
                     </TableRow>
