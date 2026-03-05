@@ -9,7 +9,8 @@
     "tailwindcss",
     "tw-animate-css",
     "postcss",
-    "server-only"
+    "server-only",
+    "lucide-react"
   ],
   "ignoreExportsUsedInFile": false,
   "ignore": ["src/components/ui/**"]
