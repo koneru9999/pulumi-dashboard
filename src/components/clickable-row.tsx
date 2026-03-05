@@ -5,15 +5,15 @@ import type { ComponentProps } from 'react'
 import { TableRow } from '@/components/ui/table'
 
 interface ClickableRowProps extends ComponentProps<typeof TableRow> {
-  href: string
+  href?: string
 }
 
 export function ClickableRow({ href, children, className, ...props }: ClickableRowProps) {
   const router = useRouter()
   return (
     <TableRow
-      onClick={() => router.push(href)}
-      className={`cursor-pointer ${className ?? ''}`}
+      onClick={href ? () => router.push(href) : undefined}
+      className={href ? `cursor-pointer ${className ?? ''}` : className}
       {...props}
     >
       {children}

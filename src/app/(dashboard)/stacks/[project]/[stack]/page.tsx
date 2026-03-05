@@ -168,12 +168,11 @@ export default async function StackDetailPage({
                 <TableBody>
                   {history.items.map((entry) => {
                     const hasSnapshot = checkpointEpochs.has(entry.epoch)
-                    const Row = hasSnapshot ? ClickableRow : TableRow
-                    const rowProps = hasSnapshot
-                      ? { href: `${stackPath}/checkpoint/${entry.epoch}` }
-                      : {}
                     return (
-                      <Row key={entry.epoch} {...(rowProps as object)}>
+                      <ClickableRow
+                        key={entry.epoch}
+                        href={hasSnapshot ? `${stackPath}/checkpoint/${entry.epoch}` : undefined}
+                      >
                         <TableCell className="text-muted-foreground text-sm">
                           #{entry.version}
                         </TableCell>
@@ -202,7 +201,7 @@ export default async function StackDetailPage({
                         <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
                           {entry.message || '—'}
                         </TableCell>
-                      </Row>
+                      </ClickableRow>
                     )
                   })}
                   {history.items.length === 0 && (
