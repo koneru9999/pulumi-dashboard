@@ -8,7 +8,9 @@ class LruCache {
 
   get(key: string): string | undefined {
     const entry = this.map.get(key)
-    if (!entry) return undefined
+    if (!entry) {
+      return undefined
+    }
     // Re-insert to mark as most recently used
     this.map.delete(key)
     this.map.set(key, entry)
@@ -16,7 +18,9 @@ class LruCache {
   }
 
   set(key: string, value: string, bytes: number): void {
-    if (bytes > this.maxBytes) return // single item exceeds limit — skip
+    if (bytes > this.maxBytes) {
+      return // single item exceeds limit — skip
+    }
 
     // Remove existing entry to update its position and size
     const existing = this.map.get(key)
@@ -28,9 +32,13 @@ class LruCache {
     // Evict least-recently-used entries until there is room
     while (this.usedBytes + bytes > this.maxBytes) {
       const lruKey = this.map.keys().next().value
-      if (lruKey === undefined) break
+      if (lruKey === undefined) {
+        break
+      }
       const lruEntry = this.map.get(lruKey)
-      if (lruEntry) this.usedBytes -= lruEntry.bytes
+      if (lruEntry) {
+        this.usedBytes -= lruEntry.bytes
+      }
       this.map.delete(lruKey)
     }
 

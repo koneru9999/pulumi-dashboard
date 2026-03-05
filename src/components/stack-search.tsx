@@ -30,7 +30,9 @@ export function StackSearch({ initialQuery }: { initialQuery: string }) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value
     setValue(q)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
     debounceRef.current = setTimeout(() => push(q), 300)
   }
 

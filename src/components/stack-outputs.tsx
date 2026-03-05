@@ -15,10 +15,18 @@ function isSecret(value: unknown): boolean {
 }
 
 function formatValue(value: unknown): string {
-  if (isSecret(value)) return '****'
-  if (value === null || value === undefined) return '—'
-  if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (isSecret(value)) {
+    return '****'
+  }
+  if (value === null || value === undefined) {
+    return '—'
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
   return JSON.stringify(value)
 }
 

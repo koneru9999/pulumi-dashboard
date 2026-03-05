@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
-  if (!session) redirect('/login')
+  if (!session) {
+    redirect('/login')
+  }
 
   return (
     <div className="min-h-screen bg-background">

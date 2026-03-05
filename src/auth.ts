@@ -2,7 +2,9 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 
 const ALLOWED_DOMAIN = process.env.AUTH_ALLOWED_DOMAIN
-if (!ALLOWED_DOMAIN) throw new Error('AUTH_ALLOWED_DOMAIN env var is required')
+if (!ALLOWED_DOMAIN) {
+  throw new Error('AUTH_ALLOWED_DOMAIN env var is required')
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -13,7 +15,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     signIn({ profile }) {
-      if (!profile?.email) return false
+      if (!profile?.email) {
+        return false
+      }
       return profile.email.endsWith(`@${ALLOWED_DOMAIN}`)
     },
   },

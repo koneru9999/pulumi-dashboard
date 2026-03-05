@@ -28,7 +28,9 @@ async function listKeys(bucket: string, prefix: string): Promise<string[]> {
       }),
     )
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) keys.push(obj.Key)
+      if (obj.Key) {
+        keys.push(obj.Key)
+      }
     }
     continuationToken = res.NextContinuationToken
   } while (continuationToken)
@@ -37,7 +39,9 @@ async function listKeys(bucket: string, prefix: string): Promise<string[]> {
 }
 
 export async function getStackIndex(): Promise<StackEntry[]> {
-  if (_index) return _index
+  if (_index) {
+    return _index
+  }
 
   const buckets = getBuckets()
   const entries: StackEntry[] = []
@@ -45,10 +49,14 @@ export async function getStackIndex(): Promise<StackEntry[]> {
   for (const cfg of buckets) {
     const keys = await listKeys(cfg.bucket, `${PREFIX}/stacks/`)
     for (const key of keys) {
-      if (!key.endsWith('.json') || key.endsWith('.json.bak')) continue
+      if (!key.endsWith('.json') || key.endsWith('.json.bak')) {
+        continue
+      }
       const name = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '')
       const parts = name.split('/')
-      if (parts.length !== 2) continue
+      if (parts.length !== 2) {
+        continue
+      }
       const [project, stack] = parts
       entries.push({ bucket: cfg.bucket, env: cfg.id, envLabel: cfg.label, project, stack })
     }
@@ -66,6 +74,8 @@ export function clearStackIndex(): void {
 export async function lookupStack(project: string, stack: string): Promise<StackEntry> {
   const index = await getStackIndex()
   const entry = index.find((e) => e.project === project && e.stack === stack)
-  if (!entry) throw new Error(`Stack not found: ${project}/${stack}`)
+  if (!entry) {
+    throw new Error(`Stack not found: ${project}/${stack}`)
+  }
   return entry
 }

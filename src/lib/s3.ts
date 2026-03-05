@@ -25,12 +25,16 @@ async function s3Json<T>(bucket: string, key: string): Promise<T> {
   const cacheKey = `${bucket}:${key}`
   if (isImmutable(key)) {
     const cached = historyCache.get(cacheKey)
-    if (cached) return JSON.parse(cached) as T
+    if (cached) {
+      return JSON.parse(cached) as T
+    }
   }
 
   const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
   const body = await res.Body?.transformToString()
-  if (!body) throw new Error(`Empty response body for S3 key: ${key}`)
+  if (!body) {
+    throw new Error(`Empty response body for S3 key: ${key}`)
+  }
 
   if (isImmutable(key)) {
     historyCache.set(cacheKey, body, Buffer.byteLength(body, 'utf8'))
@@ -52,7 +56,9 @@ async function listKeys(bucket: string, prefix: string): Promise<string[]> {
       }),
     )
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) keys.push(obj.Key)
+      if (obj.Key) {
+        keys.push(obj.Key)
+      }
     }
     continuationToken = res.NextContinuationToken
   } while (continuationToken)
@@ -96,7 +102,7 @@ export async function listStacks(
   }
 
   const projects = [...projectMap.keys()]
-  const total = filtered.length
+  const _total = filtered.length
   const totalPages = Math.max(1, Math.ceil(projects.length / pageSize))
   const pageProjects = projects.slice((page - 1) * pageSize, page * pageSize)
   const pageEntries = pageProjects.flatMap((p) => projectMap.get(p) ?? [])
@@ -122,7 +128,7 @@ export async function listStacks(
     }),
   )
 
-  return { items, total, page, pageSize, totalPages }
+  return { items, total: projects.length, page, pageSize, totalPages }
 }
 
 /**
@@ -136,7 +142,9 @@ export async function listHistoryFiles(
 ): Promise<HistoryFile[]> {
   const cacheKey = `${bucket}:${project}/${stack}`
   const cached = historyFilesCache.get(cacheKey)
-  if (cached) return cached
+  if (cached) {
+    return cached
+  }
 
   const prefix = `${PREFIX}/history/${project}/${stack}/`
   const keys = await listKeys(bucket, prefix)
@@ -195,7 +203,9 @@ export async function getCheckpoint(
 ): Promise<PulumiCheckpoint> {
   const files = await listHistoryFiles(bucket, project, stack)
   const file = files.find((f) => f.type === 'checkpoint' && f.epoch === epoch)
-  if (!file) throw new Error(`No checkpoint found for ${project}/${stack} at epoch ${epoch}`)
+  if (!file) {
+    throw new Error(`No checkpoint found for ${project}/${stack} at epoch ${epoch}`)
+  }
   return s3Json<PulumiCheckpoint>(bucket, file.key)
 }
 
@@ -210,7 +220,9 @@ export async function getHistoryEntry(
 ): Promise<PulumiHistoryEntry> {
   const files = await listHistoryFiles(bucket, project, stack)
   const file = files.find((f) => f.type === 'history' && f.epoch === epoch)
-  if (!file) throw new Error(`No history entry found for ${project}/${stack} at epoch ${epoch}`)
+  if (!file) {
+    throw new Error(`No history entry found for ${project}/${stack} at epoch ${epoch}`)
+  }
   return s3Json<PulumiHistoryEntry>(bucket, file.key)
 }
 

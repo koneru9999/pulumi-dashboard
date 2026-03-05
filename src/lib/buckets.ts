@@ -13,23 +13,30 @@ function titleCase(s: string): string {
 let _cache: BucketConfig[] | null = null
 
 export function getBuckets(): BucketConfig[] {
-  if (_cache) return _cache
+  if (_cache) {
+    return _cache
+  }
 
   const configs: BucketConfig[] = []
 
   for (const [key, value] of Object.entries(process.env)) {
-    if (!key.startsWith('PULUMI_STATE_BUCKET_') || !value) continue
+    if (!key.startsWith('PULUMI_STATE_BUCKET_') || !value) {
+      continue
+    }
     const suffix = key.slice('PULUMI_STATE_BUCKET_'.length)
-    if (!suffix) continue
+    if (!suffix) {
+      continue
+    }
     configs.push({ id: suffix.toLowerCase(), label: titleCase(suffix), bucket: value })
   }
 
   if (configs.length === 0) {
     const bucket = process.env.PULUMI_STATE_BUCKET
-    if (!bucket)
+    if (!bucket) {
       throw new Error(
         'No S3 bucket configured. Set PULUMI_STATE_BUCKET or PULUMI_STATE_BUCKET_<ENV>.',
       )
+    }
     configs.push({ id: 'default', label: 'Default', bucket })
   }
 

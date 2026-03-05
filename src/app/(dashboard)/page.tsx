@@ -31,7 +31,9 @@ export default async function StacksPage({
   const { items: stacks, total, totalPages } = await listStacks(page, 25, query)
 
   const byProject = stacks.reduce<Record<string, typeof stacks>>((acc, s) => {
-    if (!acc[s.project]) acc[s.project] = []
+    if (!acc[s.project]) {
+      acc[s.project] = []
+    }
     acc[s.project].push(s)
     return acc
   }, {})
@@ -42,7 +44,7 @@ export default async function StacksPage({
         <div>
           <h1 className="text-2xl font-bold">Projects</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {total} stack{total !== 1 ? 's' : ''}
+            {total} project{total !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">

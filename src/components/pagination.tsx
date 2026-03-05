@@ -34,9 +34,15 @@ function pageNumbers(page: number, totalPages: number): PageItem[] {
   const start = Math.max(2, page - delta)
   const end = Math.min(totalPages - 1, page + delta)
 
-  if (start > 2) items.push({ key: 'ellipsis-start', value: '...' })
-  for (let i = start; i <= end; i++) items.push({ key: String(i), value: i })
-  if (end < totalPages - 1) items.push({ key: 'ellipsis-end', value: '...' })
+  if (start > 2) {
+    items.push({ key: 'ellipsis-start', value: '...' })
+  }
+  for (let i = start; i <= end; i++) {
+    items.push({ key: String(i), value: i })
+  }
+  if (end < totalPages - 1) {
+    items.push({ key: 'ellipsis-end', value: '...' })
+  }
 
   items.push({ key: String(totalPages), value: totalPages })
   return items
@@ -49,7 +55,9 @@ export function Pagination({
   paramName = 'page',
   otherParams,
 }: PaginationProps) {
-  if (totalPages <= 1) return null
+  if (totalPages <= 1) {
+    return null
+  }
 
   const pages = pageNumbers(page, totalPages)
 

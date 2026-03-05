@@ -33,12 +33,16 @@ const resultVariant: Record<PulumiHistoryEntry['result'], 'default' | 'destructi
 
 function formatDuration(startTime: number, endTime: number) {
   const secs = Math.round(endTime - startTime)
-  if (secs < 60) return `${secs}s`
+  if (secs < 60) {
+    return `${secs}s`
+  }
   return `${Math.floor(secs / 60)}m ${secs % 60}s`
 }
 
 function ResourceChangeBadges({ changes }: { changes?: PulumiHistoryEntry['resourceChanges'] }) {
-  if (!changes) return <span className="text-muted-foreground">—</span>
+  if (!changes) {
+    return <span className="text-muted-foreground">—</span>
+  }
   return (
     <div className="flex gap-1 flex-wrap">
       {changes.create ? (
@@ -94,7 +98,7 @@ export default async function StackDetailPage({
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground flex items-center gap-1">
           <Link href="/" className="hover:underline">
-            Stacks
+            Projects
           </Link>
           <span>/</span>
           <span>{project}</span>
