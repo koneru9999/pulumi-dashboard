@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -30,7 +31,7 @@ export async function generateMetadata({
     )
     const icon = historyEntry?.result ? (resultIcon[historyEntry.result] ?? '') : ''
     const date = historyEntry
-      ? new Date(historyEntry.startTime * 1000).toLocaleString()
+      ? format(new Date(historyEntry.startTime * 1000), 'do MMMM yyyy, p')
       : epochMs
     return { title: `${icon} Snapshot ${date} — ${project}/${stack}` }
   } catch {
