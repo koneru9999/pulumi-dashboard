@@ -262,7 +262,7 @@ export default async function CheckpointPage({
         </Link>
         <span>/</span>
         <span className="text-foreground font-medium flex items-center gap-1.5">
-          Snapshot {manifest?.time ? new Date(manifest.time).toLocaleString() : epochMs}
+          Snapshot {manifest?.time ? format(new Date(manifest.time), 'do MMMM yyyy, p') : epochMs}
           {historyEntry?.result === 'succeeded' && (
             <svg
               xmlns="http://www.w3.org/2000/svg"
