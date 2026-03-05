@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { RelativeTime } from '@/components/relative-time'
@@ -9,6 +10,31 @@ import { getCheckpoint, getHistoryEntry, listHistoryFiles } from '@/lib/s3'
 import { lookupStack } from '@/lib/stack-index'
 
 export const dynamic = 'force-dynamic'
+
+const resultIcon: Record<string, string> = {
+  succeeded: '✅',
+  failed: '❌',
+  'in-progress': '⏳',
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ project: string; stack: string; epochMs: string }>
+}): Promise<Metadata> {
+  const { project, stack, epochMs } = await params
+  try {
+    const entry = await lookupStack(project, stack)
+    const historyEntry = await getHistoryEntry(entry.bucket, project, stack, epochMs).catch(
+      () => null,
+    )
+    const icon = historyEntry?.result ? (resultIcon[historyEntry.result] ?? '') : ''
+    const date = new Date(Number(epochMs)).toLocaleDateString()
+    return { title: `${icon} Snapshot ${date} — ${project}/${stack}` }
+  } catch {
+    return { title: 'Snapshot — Pulumi Dashboard' }
+  }
+}
 
 // ─── Diff helpers ────────────────────────────────────────────────────────────
 
