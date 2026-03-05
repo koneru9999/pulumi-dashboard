@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { refreshStackHistoryAction } from '@/app/actions'
+import { ClickableRow } from '@/components/clickable-row'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
 import { ResourceTree } from '@/components/resource-tree'
@@ -170,19 +171,13 @@ export default async function StackDetailPage({
                 <TableBody>
                   {history.items.map((entry) => {
                     const hasSnapshot = checkpointEpochs.has(entry.epoch)
+                    const Row = hasSnapshot ? ClickableRow : TableRow
+                    const rowProps = hasSnapshot
+                      ? { href: `${stackPath}/checkpoint/${entry.epoch}` }
+                      : {}
                     return (
-                      <TableRow
-                        key={entry.epoch}
-                        className={hasSnapshot ? 'relative cursor-pointer' : undefined}
-                      >
+                      <Row key={entry.epoch} {...(rowProps as object)}>
                         <TableCell className="text-muted-foreground text-sm">
-                          {hasSnapshot && (
-                            <Link
-                              href={`${stackPath}/checkpoint/${entry.epoch}`}
-                              className="absolute inset-0"
-                              aria-label={`View snapshot for version ${entry.version}`}
-                            />
-                          )}
                           #{entry.version}
                         </TableCell>
                         <TableCell>
@@ -210,7 +205,7 @@ export default async function StackDetailPage({
                         <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
                           {entry.message || '—'}
                         </TableCell>
-                      </TableRow>
+                      </Row>
                     )
                   })}
                   {history.items.length === 0 && (
