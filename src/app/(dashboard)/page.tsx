@@ -61,68 +61,70 @@ export default async function StacksPage({
 
       <Pagination page={page} totalPages={totalPages} basePath="/" className="border-b" />
 
-      {Object.entries(byProject).map(([project, groupStacks]) => {
-        const projectMultiEnv = new Set(groupStacks.map((s) => s.env)).size > 1
-        return (
-          <Card key={project}>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">{project}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Stack</TableHead>
-                    <TableHead>Resources</TableHead>
-                    <TableHead>Last updated</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupStacks.map((s) => (
-                    <TableRow key={`${s.env}/${s.stack}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/stacks/${s.project}/${s.stack}`}
-                            className="font-medium hover:underline"
-                          >
-                            {s.stack}
-                          </Link>
-                          {projectMultiEnv && (
-                            <span
-                              className="text-xs px-1.5 py-0.5 rounded"
-                              style={{
-                                background: 'var(--muted)',
-                                color: 'var(--muted-foreground)',
-                              }}
-                            >
-                              {s.envLabel}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {s.resourceCount !== undefined ? (
-                          <Badge variant="secondary">{s.resourceCount}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {s.lastUpdated ? (
-                          <RelativeTime ms={new Date(s.lastUpdated).getTime()} />
-                        ) : (
-                          '—'
-                        )}
-                      </TableCell>
+      <div className="grid grid-cols-2 gap-4">
+        {Object.entries(byProject).map(([project, groupStacks]) => {
+          const projectMultiEnv = new Set(groupStacks.map((s) => s.env)).size > 1
+          return (
+            <Card key={project}>
+              <CardHeader>
+                <CardTitle className="text-base font-medium">{project}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Stack</TableHead>
+                      <TableHead>Resources</TableHead>
+                      <TableHead>Last updated</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )
-      })}
+                  </TableHeader>
+                  <TableBody>
+                    {groupStacks.map((s) => (
+                      <TableRow key={`${s.env}/${s.stack}`}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/stacks/${s.project}/${s.stack}`}
+                              className="font-medium hover:underline"
+                            >
+                              {s.stack}
+                            </Link>
+                            {projectMultiEnv && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded"
+                                style={{
+                                  background: 'var(--muted)',
+                                  color: 'var(--muted-foreground)',
+                                }}
+                              >
+                                {s.envLabel}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {s.resourceCount !== undefined ? (
+                            <Badge variant="secondary">{s.resourceCount}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {s.lastUpdated ? (
+                            <RelativeTime ms={new Date(s.lastUpdated).getTime()} />
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
 
       <Pagination page={page} totalPages={totalPages} basePath="/" />
     </div>
