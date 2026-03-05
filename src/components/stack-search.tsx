@@ -42,13 +42,7 @@ export function StackSearch({ initialQuery }: { initialQuery: string }) {
       value={value}
       onChange={handleChange}
       placeholder="Search projects…"
-      className="w-full max-w-sm rounded-md px-3 py-1.5 text-sm"
-      style={{
-        border: '1px solid var(--border)',
-        background: 'var(--background)',
-        color: 'var(--foreground)',
-        outline: 'none',
-      }}
+      className="w-full max-w-sm rounded-md border border-border bg-background text-foreground px-3 py-1.5 text-sm focus:outline-none"
     />
   )
 }

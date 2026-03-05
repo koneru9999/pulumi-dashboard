@@ -21,15 +21,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      style={{
-        cursor: 'pointer',
-        background: 'none',
-        border: 'none',
-        padding: 4,
-        display: 'flex',
-        alignItems: 'center',
-        color: 'var(--muted-foreground)',
-      }}
+      className="flex items-center p-1 bg-transparent border-none text-muted-foreground"
     >
       {isDark ? (
         <svg
