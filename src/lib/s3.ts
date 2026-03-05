@@ -66,9 +66,21 @@ async function listKeys(prefix: string): Promise<string[]> {
  * Returns a paginated list of stacks, sorted alphabetically by project/stack.
  * Only fetches S3 content for the current page — key listing is cheap.
  */
-export async function listStacks(page = 1, pageSize = 25): Promise<Paginated<StackSummary>> {
+export async function listStacks(
+  page = 1,
+  pageSize = 25,
+  query = '',
+): Promise<Paginated<StackSummary>> {
   const keys = await listKeys(`${PREFIX}/stacks/`)
-  const stackKeys = keys.filter((k) => k.endsWith('.json') && !k.endsWith('.json.bak')).sort()
+  const q = query.trim().toLowerCase()
+  const stackKeys = keys
+    .filter((k) => k.endsWith('.json') && !k.endsWith('.json.bak'))
+    .filter((k) => {
+      if (!q) return true
+      const name = k.replace(`${PREFIX}/stacks/`, '').replace('.json', '')
+      return name.toLowerCase().includes(q)
+    })
+    .sort()
 
   const total = stackKeys.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
+import { StackSearch } from '@/components/stack-search'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,12 +20,13 @@ export const dynamic = 'force-dynamic'
 export default async function StacksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>
+  searchParams: Promise<{ page?: string; q?: string }>
 }) {
-  const { page: pageParam } = await searchParams
+  const { page: pageParam, q } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1', 10))
+  const query = q ?? ''
 
-  const { items: stacks, total, totalPages } = await listStacks(page)
+  const { items: stacks, total, totalPages } = await listStacks(page, 25, query)
 
   const byProject = stacks.reduce<Record<string, typeof stacks>>((acc, s) => {
     if (!acc[s.project]) acc[s.project] = []
@@ -33,11 +36,16 @@ export default async function StacksPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Stacks</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {total} stack{total !== 1 ? 's' : ''}
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Stacks</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {total} stack{total !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Suspense>
+          <StackSearch initialQuery={query} />
+        </Suspense>
       </div>
 
       {Object.entries(byProject).map(([project, projectStacks]) => (
