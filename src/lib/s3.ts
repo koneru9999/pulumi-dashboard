@@ -200,6 +200,21 @@ export async function getCheckpoint(
 }
 
 /**
+ * Returns the history entry (metadata) for a specific update epoch.
+ */
+export async function getHistoryEntry(
+  bucket: string,
+  project: string,
+  stack: string,
+  epoch: string,
+): Promise<PulumiHistoryEntry> {
+  const files = await listHistoryFiles(bucket, project, stack)
+  const file = files.find((f) => f.type === 'history' && f.epoch === epoch)
+  if (!file) throw new Error(`No history entry found for ${project}/${stack} at epoch ${epoch}`)
+  return s3Json<PulumiHistoryEntry>(bucket, file.key)
+}
+
+/**
  * Returns the current stack state (resources, manifest).
  */
 export async function getStackState(
