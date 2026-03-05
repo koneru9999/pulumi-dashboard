@@ -4,7 +4,7 @@ A self-hosted web dashboard for browsing Pulumi stack state stored in S3 — res
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - An AWS account with an S3 bucket containing Pulumi state (the bucket your `pulumi login s3://...` points to)
 - A Google OAuth app (for sign-in)
 
