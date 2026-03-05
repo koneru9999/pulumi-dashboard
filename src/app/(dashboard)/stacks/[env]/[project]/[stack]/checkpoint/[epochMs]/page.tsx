@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { RelativeTime } from '@/components/relative-time'
 import { ResourceTree } from '@/components/resource-tree'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getBucket } from '@/lib/buckets'
 import { getCheckpoint } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
@@ -10,14 +11,16 @@ export const dynamic = 'force-dynamic'
 export default async function CheckpointPage({
   params,
 }: {
-  params: Promise<{ project: string; stack: string; epochMs: string }>
+  params: Promise<{ env: string; project: string; stack: string; epochMs: string }>
 }) {
-  const { project, stack, epochMs } = await params
+  const { env, project, stack, epochMs } = await params
 
+  let bucket: string
   let checkpoint: Awaited<ReturnType<typeof getCheckpoint>>
 
   try {
-    checkpoint = await getCheckpoint(project, stack, epochMs)
+    ;({ bucket } = getBucket(env))
+    checkpoint = await getCheckpoint(bucket, project, stack, epochMs)
   } catch {
     notFound()
   }
@@ -33,9 +36,11 @@ export default async function CheckpointPage({
           Stacks
         </Link>
         <span>/</span>
+        <span>{env}</span>
+        <span>/</span>
         <span>{project}</span>
         <span>/</span>
-        <Link href={`/stacks/${project}/${stack}`} className="hover:underline">
+        <Link href={`/stacks/${env}/${project}/${stack}`} className="hover:underline">
           {stack}
         </Link>
         <span>/</span>

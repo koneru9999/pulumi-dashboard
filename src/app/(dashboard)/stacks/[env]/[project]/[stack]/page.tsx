@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
+import { getBucket } from '@/lib/buckets'
 import type { PulumiHistoryEntry } from '@/lib/pulumi-types'
 import { getStackState, listHistory, listHistoryFiles } from '@/lib/s3'
 
@@ -57,22 +58,24 @@ export default async function StackDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ project: string; stack: string }>
+  params: Promise<{ env: string; project: string; stack: string }>
   searchParams: Promise<{ historyPage?: string }>
 }) {
-  const { project, stack } = await params
+  const { env, project, stack } = await params
   const { historyPage: hp } = await searchParams
   const historyPage = Math.max(1, parseInt(hp ?? '1', 10))
 
+  let bucket: string
   let history: Awaited<ReturnType<typeof listHistory>>
   let state: Awaited<ReturnType<typeof getStackState>>
   let historyFiles: Awaited<ReturnType<typeof listHistoryFiles>>
 
   try {
+    ;({ bucket } = getBucket(env))
     ;[history, state, historyFiles] = await Promise.all([
-      listHistory(project, stack, historyPage),
-      getStackState(project, stack),
-      listHistoryFiles(project, stack),
+      listHistory(bucket, project, stack, historyPage),
+      getStackState(bucket, project, stack),
+      listHistoryFiles(bucket, project, stack),
     ])
   } catch {
     notFound()
@@ -88,7 +91,7 @@ export default async function StackDetailPage({
     historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epoch),
   )
 
-  const stackPath = `/stacks/${project}/${stack}`
+  const stackPath = `/stacks/${env}/${project}/${stack}`
 
   return (
     <div className="space-y-8">
@@ -97,6 +100,8 @@ export default async function StackDetailPage({
         <Link href="/" className="hover:underline">
           Stacks
         </Link>
+        <span>/</span>
+        <span>{env}</span>
         <span>/</span>
         <span>{project}</span>
         <span>/</span>
