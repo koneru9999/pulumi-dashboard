@@ -233,6 +233,7 @@ export default async function CheckpointPage({
         </Link>
         <span>/</span>
         <span className="text-foreground font-medium flex items-center gap-1.5">
+          Snapshot {manifest?.time ? new Date(manifest.time).toLocaleString() : epochMs}
           {historyEntry?.result === 'succeeded' && (
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -244,7 +245,7 @@ export default async function CheckpointPage({
               strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-green-500"
+              style={{ color: '#22c55e' }}
               aria-label="Succeeded"
               role="img"
             >
@@ -263,7 +264,7 @@ export default async function CheckpointPage({
               strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-red-500"
+              style={{ color: '#ef4444' }}
               aria-label="Failed"
               role="img"
             >
@@ -282,14 +283,13 @@ export default async function CheckpointPage({
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-yellow-500"
+              style={{ color: '#eab308' }}
               aria-label="In progress"
               role="img"
             >
               <path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
             </svg>
           )}
-          Snapshot {manifest?.time ? new Date(manifest.time).toLocaleString() : epochMs}
         </span>
       </div>
 
