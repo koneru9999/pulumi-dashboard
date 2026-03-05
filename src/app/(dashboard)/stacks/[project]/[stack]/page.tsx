@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { refreshStackHistoryAction } from '@/app/actions'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
 import { ResourceTree } from '@/components/resource-tree'
 import { StackOutputs } from '@/components/stack-outputs'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -15,9 +17,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
-import { getBucket } from '@/lib/buckets'
 import type { PulumiHistoryEntry } from '@/lib/pulumi-types'
 import { getStackState, listHistory, listHistoryFiles } from '@/lib/s3'
+import { lookupStack } from '@/lib/stack-index'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,28 +60,20 @@ export default async function StackDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ env: string; project: string; stack: string }>
+  params: Promise<{ project: string; stack: string }>
   searchParams: Promise<{ historyPage?: string }>
 }) {
-  const { env, project, stack } = await params
+  const { project, stack } = await params
   const { historyPage: hp } = await searchParams
   const historyPage = Math.max(1, parseInt(hp ?? '1', 10))
 
-  let bucket: string
-  let history: Awaited<ReturnType<typeof listHistory>>
-  let state: Awaited<ReturnType<typeof getStackState>>
-  let historyFiles: Awaited<ReturnType<typeof listHistoryFiles>>
+  const entry = await lookupStack(project, stack).catch(() => notFound())
 
-  try {
-    ;({ bucket } = getBucket(env))
-    ;[history, state, historyFiles] = await Promise.all([
-      listHistory(bucket, project, stack, historyPage),
-      getStackState(bucket, project, stack),
-      listHistoryFiles(bucket, project, stack),
-    ])
-  } catch {
-    notFound()
-  }
+  const [history, state, historyFiles] = await Promise.all([
+    listHistory(entry.bucket, project, stack, historyPage),
+    getStackState(entry.bucket, project, stack),
+    listHistoryFiles(entry.bucket, project, stack),
+  ])
 
   const allResources = state.checkpoint?.latest?.resources ?? []
   const deploymentOutputs = state.checkpoint?.latest?.outputs ?? {}
@@ -91,7 +85,7 @@ export default async function StackDetailPage({
     historyFiles.filter((f) => f.type === 'checkpoint').map((f) => f.epoch),
   )
 
-  const stackPath = `/stacks/${env}/${project}/${stack}`
+  const stackPath = `/stacks/${project}/${stack}`
 
   return (
     <div className="space-y-8">
@@ -100,8 +94,6 @@ export default async function StackDetailPage({
         <Link href="/" className="hover:underline">
           Stacks
         </Link>
-        <span>/</span>
-        <span>{env}</span>
         <span>/</span>
         <span>{project}</span>
         <span>/</span>
@@ -142,90 +134,102 @@ export default async function StackDetailPage({
         </Card>
       </div>
 
-      {/* Update history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Update History</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Version</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Result</TableHead>
-                <TableHead>Changes</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.items.map((entry) => (
-                <TableRow key={entry.epoch}>
-                  <TableCell className="text-muted-foreground text-sm">#{entry.version}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {entry.kind}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={resultVariant[entry.result] ?? 'secondary'}
-                      className="capitalize"
-                    >
-                      {entry.result}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <ResourceChangeBadges changes={entry.resourceChanges} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDuration(entry.startTime, entry.endTime)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    <RelativeTime ms={entry.startTime * 1000} />
-                  </TableCell>
-                  <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
-                    {entry.message || '—'}
-                  </TableCell>
-                  <TableCell>
-                    {checkpointEpochs.has(entry.epoch) ? (
-                      <Link
-                        href={`${stackPath}/checkpoint/${entry.epoch}`}
-                        className="text-xs text-blue-600 hover:underline whitespace-nowrap"
-                      >
-                        View snapshot
-                      </Link>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {history.items.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No history found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={historyPage}
-            totalPages={history.totalPages}
-            basePath={stackPath}
-            paramName="historyPage"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Outputs + Resources tabs */}
-      <TabsRoot defaultValue="resources" className="gap-4">
+      {/* Tabs: History | Resources | Outputs */}
+      <TabsRoot defaultValue="history" className="gap-4">
         <TabsList>
+          <TabsTrigger value="history">History ({history.total})</TabsTrigger>
           <TabsTrigger value="resources">Resources ({allResources.length})</TabsTrigger>
           <TabsTrigger value="outputs">Outputs ({Object.keys(stackOutputs).length})</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Update History</CardTitle>
+                <form action={refreshStackHistoryAction.bind(null, project, stack)}>
+                  <Button type="submit" variant="ghost" size="icon-sm" title="Refresh history">
+                    ↻
+                  </Button>
+                </form>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Kind</TableHead>
+                    <TableHead>Result</TableHead>
+                    <TableHead>Changes</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Started</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.items.map((entry) => (
+                    <TableRow key={entry.epoch}>
+                      <TableCell className="text-muted-foreground text-sm">
+                        #{entry.version}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {entry.kind}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={resultVariant[entry.result] ?? 'secondary'}
+                          className="capitalize"
+                        >
+                          {entry.result}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <ResourceChangeBadges changes={entry.resourceChanges} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDuration(entry.startTime, entry.endTime)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        <RelativeTime ms={entry.startTime * 1000} />
+                      </TableCell>
+                      <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
+                        {entry.message || '—'}
+                      </TableCell>
+                      <TableCell>
+                        {checkpointEpochs.has(entry.epoch) ? (
+                          <Link
+                            href={`${stackPath}/checkpoint/${entry.epoch}`}
+                            className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                          >
+                            View snapshot
+                          </Link>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {history.items.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        No history found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              <Pagination
+                page={historyPage}
+                totalPages={history.totalPages}
+                basePath={stackPath}
+                paramName="historyPage"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="resources">
           <Card>
             <CardContent className="p-0">
@@ -233,6 +237,7 @@ export default async function StackDetailPage({
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="outputs">
           <Card>
             <CardContent className="p-0">

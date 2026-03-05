@@ -3,27 +3,26 @@ import { notFound } from 'next/navigation'
 import { RelativeTime } from '@/components/relative-time'
 import { ResourceTree } from '@/components/resource-tree'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getBucket } from '@/lib/buckets'
 import { getCheckpoint, listHistoryFiles } from '@/lib/s3'
+import { lookupStack } from '@/lib/stack-index'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CheckpointPage({
   params,
 }: {
-  params: Promise<{ env: string; project: string; stack: string; epochMs: string }>
+  params: Promise<{ project: string; stack: string; epochMs: string }>
 }) {
-  const { env, project, stack, epochMs } = await params
+  const { project, stack, epochMs } = await params
 
-  let bucket: string
   let checkpoint: Awaited<ReturnType<typeof getCheckpoint>>
   let allFiles: Awaited<ReturnType<typeof listHistoryFiles>>
 
   try {
-    ;({ bucket } = getBucket(env))
+    const entry = await lookupStack(project, stack)
     ;[checkpoint, allFiles] = await Promise.all([
-      getCheckpoint(bucket, project, stack, epochMs),
-      listHistoryFiles(bucket, project, stack),
+      getCheckpoint(entry.bucket, project, stack, epochMs),
+      listHistoryFiles(entry.bucket, project, stack),
     ])
   } catch {
     notFound()
@@ -38,7 +37,7 @@ export default async function CheckpointPage({
   const newerEpoch = currentIndex > 0 ? checkpoints[currentIndex - 1].epoch : null
   const olderEpoch =
     currentIndex < checkpoints.length - 1 ? checkpoints[currentIndex + 1].epoch : null
-  const checkpointBase = `/stacks/${env}/${project}/${stack}/checkpoint`
+  const checkpointBase = `/stacks/${project}/${stack}/checkpoint`
 
   return (
     <div className="space-y-8">
@@ -48,11 +47,9 @@ export default async function CheckpointPage({
           Stacks
         </Link>
         <span>/</span>
-        <span>{env}</span>
-        <span>/</span>
         <span>{project}</span>
         <span>/</span>
-        <Link href={`/stacks/${env}/${project}/${stack}`} className="hover:underline">
+        <Link href={`/stacks/${project}/${stack}`} className="hover:underline">
           {stack}
         </Link>
         <span>/</span>
