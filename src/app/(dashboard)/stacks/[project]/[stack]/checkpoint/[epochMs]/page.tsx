@@ -30,7 +30,7 @@ export async function generateMetadata({
     )
     const icon = historyEntry?.result ? (resultIcon[historyEntry.result] ?? '') : ''
     const date = historyEntry
-      ? new Date(historyEntry.startTime * 1000).toLocaleDateString()
+      ? new Date(historyEntry.startTime * 1000).toLocaleString()
       : epochMs
     return { title: `${icon} Snapshot ${date} — ${project}/${stack}` }
   } catch {
