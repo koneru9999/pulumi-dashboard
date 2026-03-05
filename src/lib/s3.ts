@@ -127,9 +127,10 @@ export async function listHistory(
   const pageSlice = sorted.slice((page - 1) * pageSize, page * pageSize)
 
   const items = await Promise.all(
-    pageSlice.map(async ({ key, epoch }) => {
+    pageSlice.map(async ({ key, epoch }, i) => {
       const entry = await s3Json<PulumiHistoryEntry>(key)
-      return { ...entry, epoch }
+      const version = total - ((page - 1) * pageSize + i)
+      return { ...entry, epoch, version }
     }),
   )
 
