@@ -39,7 +39,7 @@ export function StackSearch({ initialQuery }: { initialQuery: string }) {
       type="search"
       value={value}
       onChange={handleChange}
-      placeholder="Search stacks…"
+      placeholder="Search projects…"
       className="w-full max-w-sm rounded-md px-3 py-1.5 text-sm"
       style={{
         border: '1px solid var(--border)',
