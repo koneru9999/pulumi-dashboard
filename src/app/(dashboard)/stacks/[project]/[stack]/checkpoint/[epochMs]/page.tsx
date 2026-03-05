@@ -29,7 +29,9 @@ export async function generateMetadata({
       () => null,
     )
     const icon = historyEntry?.result ? (resultIcon[historyEntry.result] ?? '') : ''
-    const date = new Date(Number(epochMs)).toLocaleDateString()
+    const date = historyEntry
+      ? new Date(historyEntry.startTime * 1000).toLocaleDateString()
+      : epochMs
     return { title: `${icon} Snapshot ${date} — ${project}/${stack}` }
   } catch {
     return { title: 'Snapshot — Pulumi Dashboard' }
