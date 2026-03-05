@@ -1,6 +1,5 @@
 import 'server-only'
 import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
-import { getBuckets } from './buckets'
 import { historyCache } from './cache'
 import type {
   HistoryFile,
@@ -10,6 +9,7 @@ import type {
   PulumiStackState,
   StackSummary,
 } from './pulumi-types'
+import { getStackIndex } from './stack-index'
 
 const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' })
 const PREFIX = '.pulumi'
@@ -60,46 +60,50 @@ async function listKeys(bucket: string, prefix: string): Promise<string[]> {
   return keys
 }
 
+// ─── History files cache ────────────────────────────────────────────────────
+
+const historyFilesCache = new Map<string, HistoryFile[]>()
+
+export function clearHistoryFilesCache(bucket: string, project: string, stack: string): void {
+  historyFilesCache.delete(`${bucket}:${project}/${stack}`)
+}
+
 // ─── Public API ────────────────────────────────────────────────────────────
 
 /**
  * Returns a paginated list of stacks across all configured buckets, sorted alphabetically.
- * Only fetches S3 content for the current page — key listing is cheap.
+ * Paginates by project group so a project is never split across pages.
+ * pageSize = number of projects per page.
  */
 export async function listStacks(
   page = 1,
   pageSize = 25,
   query = '',
-  envFilter = '',
 ): Promise<Paginated<StackSummary>> {
-  const buckets = getBuckets()
+  const index = await getStackIndex()
   const q = query.trim().toLowerCase()
 
-  const allEntries: { bucket: string; env: string; envLabel: string; key: string }[] = []
+  const filtered = q
+    ? index.filter((e) => e.project.toLowerCase().includes(q) || e.stack.toLowerCase().includes(q))
+    : index
 
-  for (const cfg of buckets) {
-    if (envFilter && cfg.id !== envFilter) continue
-    const keys = await listKeys(cfg.bucket, `${PREFIX}/stacks/`)
-    for (const key of keys) {
-      if (!key.endsWith('.json') || key.endsWith('.json.bak')) continue
-      const name = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '')
-      if (q && !name.toLowerCase().includes(q)) continue
-      allEntries.push({ bucket: cfg.bucket, env: cfg.id, envLabel: cfg.label, key })
-    }
+  // Group entries by project, preserving sort order from the index
+  const projectMap = new Map<string, typeof filtered>()
+  for (const entry of filtered) {
+    const group = projectMap.get(entry.project) ?? []
+    group.push(entry)
+    projectMap.set(entry.project, group)
   }
 
-  allEntries.sort((a, b) => `${a.env}/${a.key}`.localeCompare(`${b.env}/${b.key}`))
-
-  const total = allEntries.length
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const pageSlice = allEntries.slice((page - 1) * pageSize, page * pageSize)
+  const projects = [...projectMap.keys()]
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(projects.length / pageSize))
+  const pageProjects = projects.slice((page - 1) * pageSize, page * pageSize)
+  const pageEntries = pageProjects.flatMap((p) => projectMap.get(p) ?? [])
 
   const items = await Promise.all(
-    pageSlice.map(async ({ bucket, env, envLabel, key }) => {
-      const parts = key.replace(`${PREFIX}/stacks/`, '').replace('.json', '').split('/')
-      const project = parts[0]
-      const stack = parts[1]
-
+    pageEntries.map(async ({ bucket, env, envLabel, project, stack }) => {
+      const key = `${PREFIX}/stacks/${project}/${stack}.json`
       try {
         const state = await s3Json<PulumiStackState>(bucket, key)
         const resources = state.checkpoint?.latest?.resources ?? []
@@ -122,6 +126,37 @@ export async function listStacks(
 }
 
 /**
+ * Returns a list of all history + checkpoint file metadata for a stack, sorted newest-first.
+ * Results are cached per bucket/project/stack.
+ */
+export async function listHistoryFiles(
+  bucket: string,
+  project: string,
+  stack: string,
+): Promise<HistoryFile[]> {
+  const cacheKey = `${bucket}:${project}/${stack}`
+  const cached = historyFilesCache.get(cacheKey)
+  if (cached) return cached
+
+  const prefix = `${PREFIX}/history/${project}/${stack}/`
+  const keys = await listKeys(bucket, prefix)
+
+  const result = keys
+    .filter((k) => k.endsWith('.history.json') || k.endsWith('.checkpoint.json'))
+    .map((key) => {
+      const filename = key.split('/').pop() ?? ''
+      const isHistory = filename.endsWith('.history.json')
+      const suffix = isHistory ? '.history.json' : '.checkpoint.json'
+      const epoch = filename.replace(`${stack}-`, '').replace(suffix, '')
+      return { key, epoch, type: isHistory ? 'history' : 'checkpoint' } satisfies HistoryFile
+    })
+    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
+
+  historyFilesCache.set(cacheKey, result)
+  return result
+}
+
+/**
  * Returns a paginated list of history entries for a stack, sorted newest-first.
  */
 export async function listHistory(
@@ -131,17 +166,8 @@ export async function listHistory(
   page = 1,
   pageSize = 25,
 ): Promise<Paginated<PulumiHistoryEntry & { epoch: string }>> {
-  const prefix = `${PREFIX}/history/${project}/${stack}/`
-  const keys = await listKeys(bucket, prefix)
-
-  const sorted = keys
-    .filter((k) => k.endsWith('.history.json'))
-    .map((key) => {
-      const filename = key.split('/').pop() ?? ''
-      const epoch = filename.split('-').pop()?.replace('.history.json', '') ?? ''
-      return { key, epoch }
-    })
-    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
+  const allFiles = await listHistoryFiles(bucket, project, stack)
+  const sorted = allFiles.filter((f) => f.type === 'history')
 
   const total = sorted.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -156,29 +182,6 @@ export async function listHistory(
   )
 
   return { items, total, page, pageSize, totalPages }
-}
-
-/**
- * Returns a list of all history + checkpoint file metadata for a stack, sorted newest-first.
- */
-export async function listHistoryFiles(
-  bucket: string,
-  project: string,
-  stack: string,
-): Promise<HistoryFile[]> {
-  const prefix = `${PREFIX}/history/${project}/${stack}/`
-  const keys = await listKeys(bucket, prefix)
-
-  return keys
-    .filter((k) => k.endsWith('.history.json') || k.endsWith('.checkpoint.json'))
-    .map((key) => {
-      const filename = key.split('/').pop() ?? ''
-      const isHistory = filename.endsWith('.history.json')
-      const suffix = isHistory ? '.history.json' : '.checkpoint.json'
-      const epoch = filename.replace(`${stack}-`, '').replace(suffix, '')
-      return { key, epoch, type: isHistory ? 'history' : 'checkpoint' } satisfies HistoryFile
-    })
-    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
 }
 
 /**

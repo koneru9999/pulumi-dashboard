@@ -36,9 +36,3 @@ export function getBuckets(): BucketConfig[] {
   _cache = configs.sort((a, b) => a.id.localeCompare(b.id))
   return _cache
 }
-
-export function getBucket(id: string): BucketConfig {
-  const found = getBuckets().find((c) => c.id === id)
-  if (!found) throw new Error(`No bucket configured with id: ${id}`)
-  return found
-}
