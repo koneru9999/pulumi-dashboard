@@ -97,35 +97,35 @@ Browser ──▶ Next.js (SSR) ──▶ In-memory index ──▶ S3 (on cache
 │  Next.js Server                                             │
 │                                                             │
 │  ┌──────────────┐    ┌──────────────────────────────────┐   │
-│  │ instrumen-   │    │  Stack Index (globalThis)         │   │
-│  │ tation.ts    │───▶│                                   │   │
-│  │              │    │  stackMap: project/stack → meta   │   │
-│  │ • buildIndex │    │  historyFilesMap: file listings   │   │
-│  │   on startup │    │  initialized: boolean             │   │
+│  │ instrumen-   │    │  Stack Index (globalThis)        │   │
+│  │ tation.ts    │───▶│                                  │   │
+│  │              │    │  stackMap: project/stack → meta  │   │
+│  │ • buildIndex │    │  historyFilesMap: file listings  │   │
+│  │   on startup │    │  initialized: boolean            │   │
 │  │ • setInterval│    └──────────┬───────────────────────┘   │
 │  │   for sync   │               │                           │
 │  └──────────────┘               │ reads from                │
 │                                 ▼                           │
 │  ┌──────────────┐    ┌──────────────────────────────────┐   │
-│  │ Route        │    │  S3 API Layer (s3.ts)             │   │
-│  │ Handlers     │───▶│                                   │   │
-│  │              │    │  • listStacks (from index)        │   │
-│  │ (dashboard)/ │    │  • listHistory (from index)       │   │
-│  │  page.tsx    │    │  • getCheckpoint (direct key)     │   │
-│  │  stacks/...  │    │  • getStackState (direct key)     │   │
+│  │ Route        │    │  S3 API Layer (s3.ts)            │   │
+│  │ Handlers     │───▶│                                  │   │
+│  │              │    │  • listStacks (from index)       │   │
+│  │ (dashboard)/ │    │  • listHistory (from index)      │   │
+│  │  page.tsx    │    │  • getCheckpoint (direct key)    │   │
+│  │  stacks/...  │    │  • getStackState (direct key)    │   │
 │  └──────────────┘    └──────────┬───────────────────────┘   │
 │                                 │                           │
 │                      ┌──────────▼───────────────────────┐   │
-│                      │  LRU Cache (cache.ts)             │   │
-│                      │  50 MB default, immutable files   │   │
+│                      │  LRU Cache (cache.ts)            │   │
+│                      │  50 MB default, immutable files  │   │
 │                      └──────────┬───────────────────────┘   │
 │                                 │ on miss                   │
 └─────────────────────────────────┼───────────────────────────┘
                                   │
                        ┌──────────▼───────────────────────┐
-                       │  AWS S3                           │
-                       │  .pulumi/stacks/...               │
-                       │  .pulumi/history/...              │
+                       │  AWS S3                          │
+                       │  .pulumi/stacks/...              │
+                       │  .pulumi/history/...             │
                        └──────────────────────────────────┘
 ```
 
@@ -168,43 +168,6 @@ The app expects the standard Pulumi S3 backend layout:
 ```
 
 Files under `history/` are immutable once written. The epoch in filenames is a nanosecond timestamp used for ordering.
-
-## Project structure
-
-```
-src/
-  app/
-    (dashboard)/              # Protected route group
-      page.tsx                # Stack listing
-      stacks/[project]/[stack]/
-        page.tsx              # Stack detail (history, resources, outputs)
-        checkpoint/[epochMs]/
-          page.tsx            # Snapshot diff view
-    login/page.tsx            # Public login page
-    api/auth/[...nextauth]/   # Auth.js route handler
-    actions.ts                # Server actions (refresh index/stack)
-  instrumentation.ts          # Server startup hook + background sync
-  auth.ts                     # Auth.js config (Google OAuth, domain restriction)
-  proxy.ts                    # Middleware (route protection)
-  lib/
-    stack-index.ts            # Stack discovery, enrichment, incremental sync
-    s3.ts                     # Public API (listStacks, listHistory, getCheckpoint)
-    s3-client.ts              # Low-level S3 primitives (listKeysWithMeta, s3JsonSafe)
-    cache.ts                  # LRU cache for immutable S3 files
-    buckets.ts                # Multi-bucket configuration from env vars
-    pulumi-types.ts           # TypeScript types for Pulumi state files
-    logger.ts                 # Structured debug logging
-  components/
-    ui/                       # shadcn/ui (auto-generated, do not edit)
-    resource-tree.tsx          # Hierarchical resource tree view
-    stack-outputs.tsx          # Stack outputs key-value display
-    pagination.tsx             # Page navigation
-    stack-search.tsx           # Search input with debounce
-    relative-time.tsx          # "2 hours ago" time display
-    status-icon.tsx            # Result status indicator
-    theme-toggle.tsx           # Dark mode toggle
-    clickable-row.tsx          # Table row as link
-```
 
 ## Configuration reference
 
