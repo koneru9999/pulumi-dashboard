@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { debug } from '@/lib/logger'
 import { listStacks } from '@/lib/s3'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,7 @@ export default async function StacksPage({
   const { page: pageParam, q } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1', 10))
   const query = q ?? ''
+  debug('route', 'GET /', { page, query })
 
   const { items: stacks, total, totalPages } = await listStacks(page, 20, query)
 

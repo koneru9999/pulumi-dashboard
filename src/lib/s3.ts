@@ -1,18 +1,16 @@
 import 'server-only'
-import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { historyCache } from './cache'
+import { debug } from './logger'
 import type {
-  HistoryFile,
   Paginated,
   PulumiCheckpoint,
   PulumiHistoryEntry,
   PulumiStackState,
   StackSummary,
 } from './pulumi-types'
-import { getStackIndex } from './stack-index'
-
-const s3 = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' })
-const PREFIX = '.pulumi'
+import { PREFIX, s3 } from './s3-client'
+import { getHistoryFiles, getStackIndex } from './stack-index'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -26,10 +24,12 @@ async function s3Json<T>(bucket: string, key: string): Promise<T> {
   if (isImmutable(key)) {
     const cached = historyCache.get(cacheKey)
     if (cached) {
+      debug('s3', 'GetObject cache-hit', { bucket, key })
       return JSON.parse(cached) as T
     }
   }
 
+  debug('s3', 'GetObject', { bucket, key })
   const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
   const body = await res.Body?.transformToString()
   if (!body) {
@@ -41,37 +41,6 @@ async function s3Json<T>(bucket: string, key: string): Promise<T> {
   }
 
   return JSON.parse(body) as T
-}
-
-async function listKeys(bucket: string, prefix: string): Promise<string[]> {
-  const keys: string[] = []
-  let continuationToken: string | undefined
-
-  do {
-    const res = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: prefix,
-        ContinuationToken: continuationToken,
-      }),
-    )
-    for (const obj of res.Contents ?? []) {
-      if (obj.Key) {
-        keys.push(obj.Key)
-      }
-    }
-    continuationToken = res.NextContinuationToken
-  } while (continuationToken)
-
-  return keys
-}
-
-// ─── History files cache ────────────────────────────────────────────────────
-
-const historyFilesCache = new Map<string, HistoryFile[]>()
-
-export function clearHistoryFilesCache(bucket: string, project: string, stack: string): void {
-  historyFilesCache.delete(`${bucket}:${project}/${stack}`)
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────
@@ -86,6 +55,7 @@ export async function listStacks(
   pageSize = 25,
   query = '',
 ): Promise<Paginated<StackSummary>> {
+  debug('api', 'listStacks', { page, pageSize, query })
   const index = await getStackIndex()
   const q = query.trim().toLowerCase()
 
@@ -102,80 +72,22 @@ export async function listStacks(
   }
 
   const projects = [...projectMap.keys()]
-  const _total = filtered.length
   const totalPages = Math.max(1, Math.ceil(projects.length / pageSize))
   const pageProjects = projects.slice((page - 1) * pageSize, page * pageSize)
-  const pageEntries = pageProjects.flatMap((p) => projectMap.get(p) ?? [])
-
-  const items = await Promise.all(
-    pageEntries.map(async ({ bucket, env, envLabel, project, stack }) => {
-      const key = `${PREFIX}/stacks/${project}/${stack}.json`
-      try {
-        const state = await s3Json<PulumiStackState>(bucket, key)
-        const resources = state.checkpoint?.latest?.resources ?? []
-        const manifest = state.checkpoint?.latest?.manifest
-
-        let lastResult: PulumiHistoryEntry['result'] | undefined
-        try {
-          const histFiles = await listHistoryFiles(bucket, project, stack)
-          const latest = histFiles.find((f) => f.type === 'history')
-          if (latest) {
-            const entry = await s3Json<PulumiHistoryEntry>(bucket, latest.key)
-            lastResult = entry.result
-          }
-        } catch {
-          // history may not exist yet
-        }
-
-        return {
-          env,
-          envLabel,
-          project,
-          stack,
-          lastUpdated: manifest?.time,
-          lastResult,
-          resourceCount: resources.length,
-        } satisfies StackSummary
-      } catch {
-        return { env, envLabel, project, stack } satisfies StackSummary
-      }
-    }),
+  const items: StackSummary[] = pageProjects.flatMap(
+    (p) =>
+      projectMap.get(p)?.map((e) => ({
+        env: e.env,
+        envLabel: e.envLabel,
+        project: e.project,
+        stack: e.stack,
+        lastUpdated: e.lastUpdated,
+        lastResult: e.lastResult,
+        resourceCount: e.resourceCount,
+      })) ?? [],
   )
 
   return { items, total: projects.length, page, pageSize, totalPages }
-}
-
-/**
- * Returns a list of all history + checkpoint file metadata for a stack, sorted newest-first.
- * Results are cached per bucket/project/stack.
- */
-export async function listHistoryFiles(
-  bucket: string,
-  project: string,
-  stack: string,
-): Promise<HistoryFile[]> {
-  const cacheKey = `${bucket}:${project}/${stack}`
-  const cached = historyFilesCache.get(cacheKey)
-  if (cached) {
-    return cached
-  }
-
-  const prefix = `${PREFIX}/history/${project}/${stack}/`
-  const keys = await listKeys(bucket, prefix)
-
-  const result = keys
-    .filter((k) => k.endsWith('.history.json') || k.endsWith('.checkpoint.json'))
-    .map((key) => {
-      const filename = key.split('/').pop() ?? ''
-      const isHistory = filename.endsWith('.history.json')
-      const suffix = isHistory ? '.history.json' : '.checkpoint.json'
-      const epoch = filename.replace(`${stack}-`, '').replace(suffix, '')
-      return { key, epoch, type: isHistory ? 'history' : 'checkpoint' } satisfies HistoryFile
-    })
-    .sort((a, b) => (BigInt(b.epoch) > BigInt(a.epoch) ? 1 : -1))
-
-  historyFilesCache.set(cacheKey, result)
-  return result
 }
 
 /**
@@ -188,7 +100,8 @@ export async function listHistory(
   page = 1,
   pageSize = 25,
 ): Promise<Paginated<PulumiHistoryEntry & { epoch: string }>> {
-  const allFiles = await listHistoryFiles(bucket, project, stack)
+  debug('api', 'listHistory', { project, stack, page, pageSize })
+  const allFiles = await getHistoryFiles(bucket, project, stack)
   const sorted = allFiles.filter((f) => f.type === 'history')
 
   const total = sorted.length
@@ -208,6 +121,7 @@ export async function listHistory(
 
 /**
  * Returns the checkpoint (frozen resource state) for a specific update epoch.
+ * Constructs the S3 key directly from the deterministic path pattern.
  */
 export async function getCheckpoint(
   bucket: string,
@@ -215,16 +129,14 @@ export async function getCheckpoint(
   stack: string,
   epoch: string,
 ): Promise<PulumiCheckpoint> {
-  const files = await listHistoryFiles(bucket, project, stack)
-  const file = files.find((f) => f.type === 'checkpoint' && f.epoch === epoch)
-  if (!file) {
-    throw new Error(`No checkpoint found for ${project}/${stack} at epoch ${epoch}`)
-  }
-  return s3Json<PulumiCheckpoint>(bucket, file.key)
+  debug('api', 'getCheckpoint', { project, stack, epoch })
+  const key = `${PREFIX}/history/${project}/${stack}/${stack}-${epoch}.checkpoint.json`
+  return s3Json<PulumiCheckpoint>(bucket, key)
 }
 
 /**
  * Returns the history entry (metadata) for a specific update epoch.
+ * Constructs the S3 key directly from the deterministic path pattern.
  */
 export async function getHistoryEntry(
   bucket: string,
@@ -232,12 +144,9 @@ export async function getHistoryEntry(
   stack: string,
   epoch: string,
 ): Promise<PulumiHistoryEntry> {
-  const files = await listHistoryFiles(bucket, project, stack)
-  const file = files.find((f) => f.type === 'history' && f.epoch === epoch)
-  if (!file) {
-    throw new Error(`No history entry found for ${project}/${stack} at epoch ${epoch}`)
-  }
-  return s3Json<PulumiHistoryEntry>(bucket, file.key)
+  debug('api', 'getHistoryEntry', { project, stack, epoch })
+  const key = `${PREFIX}/history/${project}/${stack}/${stack}-${epoch}.history.json`
+  return s3Json<PulumiHistoryEntry>(bucket, key)
 }
 
 /**
@@ -248,6 +157,7 @@ export async function getStackState(
   project: string,
   stack: string,
 ): Promise<PulumiStackState> {
+  debug('api', 'getStackState', { project, stack })
   const key = `${PREFIX}/stacks/${project}/${stack}.json`
   return s3Json<PulumiStackState>(bucket, key)
 }

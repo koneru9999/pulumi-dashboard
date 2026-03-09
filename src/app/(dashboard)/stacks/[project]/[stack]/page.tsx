@@ -18,9 +18,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
+import { debug } from '@/lib/logger'
 import type { PulumiHistoryEntry } from '@/lib/pulumi-types'
-import { getStackState, listHistory, listHistoryFiles } from '@/lib/s3'
-import { lookupStack } from '@/lib/stack-index'
+import { getStackState, listHistory } from '@/lib/s3'
+import { getHistoryFiles, lookupStack } from '@/lib/stack-index'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,12 +73,13 @@ export default async function StackDetailPage({
   const { historyPage: hp } = await searchParams
   const historyPage = Math.max(1, parseInt(hp ?? '1', 10))
 
+  debug('route', `GET /stacks/${project}/${stack}`, { historyPage })
   const entry = await lookupStack(project, stack).catch(() => notFound())
 
   const [history, state, historyFiles] = await Promise.all([
     listHistory(entry.bucket, project, stack, historyPage),
     getStackState(entry.bucket, project, stack),
-    listHistoryFiles(entry.bucket, project, stack),
+    getHistoryFiles(entry.bucket, project, stack),
   ])
 
   const allResources = state.checkpoint?.latest?.resources ?? []

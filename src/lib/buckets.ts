@@ -1,6 +1,6 @@
 import 'server-only'
 
-interface BucketConfig {
+export interface BucketConfig {
   id: string
   label: string
   bucket: string

@@ -7,9 +7,10 @@ import { ResourceTree } from '@/components/resource-tree'
 import { StatusIcon } from '@/components/status-icon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
+import { debug } from '@/lib/logger'
 import type { PulumiCheckpoint, PulumiHistoryEntry, PulumiResource } from '@/lib/pulumi-types'
-import { getCheckpoint, getHistoryEntry, listHistoryFiles } from '@/lib/s3'
-import { lookupStack } from '@/lib/stack-index'
+import { getCheckpoint, getHistoryEntry } from '@/lib/s3'
+import { getHistoryFiles, lookupStack } from '@/lib/stack-index'
 
 export const dynamic = 'force-dynamic'
 
@@ -208,15 +209,16 @@ export default async function CheckpointPage({
   params: Promise<{ project: string; stack: string; epochMs: string }>
 }) {
   const { project, stack, epochMs } = await params
+  debug('route', `GET /stacks/${project}/${stack}/checkpoint/${epochMs}`)
 
   let checkpoint: Awaited<ReturnType<typeof getCheckpoint>>
   let historyEntry: PulumiHistoryEntry | null = null
   let prevCheckpoint: PulumiCheckpoint | null = null
-  let allFiles: Awaited<ReturnType<typeof listHistoryFiles>>
+  let allFiles: Awaited<ReturnType<typeof getHistoryFiles>>
 
   try {
     const entry = await lookupStack(project, stack)
-    allFiles = await listHistoryFiles(entry.bucket, project, stack)
+    allFiles = await getHistoryFiles(entry.bucket, project, stack)
 
     const cpFiles = allFiles.filter((f) => f.type === 'checkpoint')
     const currentIndex = cpFiles.findIndex((c) => c.epoch === epochMs)
