@@ -4,7 +4,7 @@ import { refreshStackAction } from '@/app/actions'
 import { ClickableRow } from '@/components/clickable-row'
 import { Pagination } from '@/components/pagination'
 import { RelativeTime } from '@/components/relative-time'
-import { ResourceTree } from '@/components/resource-tree'
+import { ResourceView } from '@/components/resource-view'
 import { StackOutputs } from '@/components/stack-outputs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -239,7 +239,7 @@ export default async function StackDetailPage({
         <TabsContent value="resources">
           <Card>
             <CardContent className="p-0">
-              <ResourceTree resources={allResources} />
+              <ResourceView resources={allResources} />
             </CardContent>
           </Card>
         </TabsContent>

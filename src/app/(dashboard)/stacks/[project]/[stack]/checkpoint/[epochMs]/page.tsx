@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { RelativeTime } from '@/components/relative-time'
-import { ResourceTree } from '@/components/resource-tree'
+import { ResourceView } from '@/components/resource-view'
 import { StatusIcon } from '@/components/status-icon'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
@@ -369,7 +369,7 @@ export default async function CheckpointPage({
         <TabsContent value="resources">
           <Card>
             <CardContent className="p-0">
-              <ResourceTree resources={allResources} />
+              <ResourceView resources={allResources} />
             </CardContent>
           </Card>
         </TabsContent>
