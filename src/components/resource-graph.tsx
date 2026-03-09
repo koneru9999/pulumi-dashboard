@@ -1,6 +1,6 @@
 'use client'
 
-import { graphlib, layout } from '@dagrejs/dagre'
+import dagre from '@dagrejs/dagre'
 import {
   Background,
   Controls,
@@ -29,7 +29,7 @@ interface ResourceNodeData {
 type ResourceNode = Node<ResourceNodeData, 'resource'>
 
 function computeLayout(resources: PulumiResource[]): { nodes: ResourceNode[]; edges: Edge[] } {
-  const g = new graphlib.Graph()
+  const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 80 })
   g.setDefaultEdgeLabel(() => ({}))
 
@@ -53,7 +53,7 @@ function computeLayout(resources: PulumiResource[]): { nodes: ResourceNode[]; ed
     }
   }
 
-  layout(g)
+  dagre.layout(g)
 
   const nodes: ResourceNode[] = resources.map((r) => {
     const pos = g.node(r.urn)
