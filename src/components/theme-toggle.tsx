@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+
 export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false)
 
@@ -17,11 +19,12 @@ export function ThemeToggle() {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon-sm"
       onClick={toggle}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="flex items-center p-1 bg-transparent border-none text-muted-foreground"
+      className="text-muted-foreground"
     >
       {isDark ? (
         <svg
@@ -57,6 +60,6 @@ export function ThemeToggle() {
           <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
         </svg>
       )}
-    </button>
+    </Button>
   )
 }

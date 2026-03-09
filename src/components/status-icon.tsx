@@ -18,7 +18,7 @@ export function StatusIcon({ result, size = 14 }: StatusIconProps) {
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ color: '#22c55e' }}
+        className="text-green-500"
         aria-label="Succeeded"
         role="img"
       >
@@ -40,7 +40,7 @@ export function StatusIcon({ result, size = 14 }: StatusIconProps) {
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ color: '#ef4444' }}
+        className="text-red-500"
         aria-label="Failed"
         role="img"
       >
@@ -61,7 +61,7 @@ export function StatusIcon({ result, size = 14 }: StatusIconProps) {
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ color: '#eab308' }}
+      className="text-yellow-500"
       aria-label="In progress"
       role="img"
     >

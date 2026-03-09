@@ -65,8 +65,7 @@ function OutputRow({ name, value }: { name: string; value: unknown }) {
           </span>
           {!secret && (
             <div
-              className="flex items-center gap-1 shrink-0"
-              style={{ opacity: hovered ? 1 : 0, transition: 'opacity 0.15s' }}
+              className={`flex items-center gap-1 shrink-0 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0'}`}
             >
               {isUrl && (
                 <a
@@ -98,7 +97,7 @@ function OutputRow({ name, value }: { name: string; value: unknown }) {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="text-muted-foreground hover:text-foreground"
+                className="border-0 bg-transparent p-0 cursor-pointer text-muted-foreground hover:text-foreground"
                 title={copied ? 'Copied!' : 'Copy value'}
               >
                 {copied ? (

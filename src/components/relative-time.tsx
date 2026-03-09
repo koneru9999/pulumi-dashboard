@@ -8,7 +8,7 @@ export function RelativeTime({ ms }: { ms: number }) {
   return (
     <TooltipRoot>
       <TooltipTrigger>
-        <span style={{ cursor: 'default' }}>{formatDistanceToNow(date, { addSuffix: true })}</span>
+        <span className="cursor-default">{formatDistanceToNow(date, { addSuffix: true })}</span>
       </TooltipTrigger>
       <TooltipContent>{format(date, 'do MMMM yyyy, p')}</TooltipContent>
     </TooltipRoot>

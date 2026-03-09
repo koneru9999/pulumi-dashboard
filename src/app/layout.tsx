@@ -1,17 +1,17 @@
 import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import "./globals.css";
+import './globals.css'
 
 const fontSans = Inter({
-    subsets: ["latin"],
-    variable: "--font-sans",
-});
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
 
 const fontMono = JetBrains_Mono({
-    subsets: ["latin"],
-    variable: "--font-mono",
-});
+  subsets: ['latin'],
+  variable: '--font-mono',
+})
 
 export const metadata: Metadata = {
   title: 'Pulumi Dashboard',
@@ -25,9 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${fontSans.variable} ${fontMono.variable} antialiased`}
-      >
+      <body className={`${fontSans.variable} ${fontMono.variable} antialiased`}>
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: FOUC prevention inline script
           dangerouslySetInnerHTML={{

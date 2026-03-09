@@ -115,21 +115,12 @@ function arnToConsoleUrl(arn: string): string | null {
 }
 
 function ResourceLink({ href, name }: { href: string; name: string }) {
-  const [hovered, setHovered] = useState(false)
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        textDecoration: hovered ? 'underline' : 'none',
-        color: 'inherit',
-      }}
+      className="group inline-flex items-center gap-1 text-inherit hover:underline"
     >
       {name}
       <svg
@@ -144,7 +135,7 @@ function ResourceLink({ href, name }: { href: string; name: string }) {
         strokeLinejoin="round"
         role="img"
         aria-label="Open in AWS console"
-        style={{ opacity: hovered ? 0.5 : 0, transition: 'opacity 0.15s', flexShrink: 0 }}
+        className="shrink-0 opacity-0 transition-opacity group-hover:opacity-50"
       >
         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
         <polyline points="15 3 21 3 21 9" />
@@ -176,10 +167,7 @@ function TreeNode({ node, childrenMap, depth, collapsed, onToggle }: TreeNodePro
       <TableRow>
         <TableCell className="py-2">
           <div className="flex items-center gap-2">
-            <span
-              className="shrink-0 rounded-full"
-              style={{ width: 8, height: 8, backgroundColor: color }}
-            />
+            <span className="shrink-0 rounded-full size-2" style={{ backgroundColor: color }} />
             <span className="font-mono text-xs text-muted-foreground">{node.type}</span>
           </div>
         </TableCell>
@@ -189,21 +177,12 @@ function TreeNode({ node, childrenMap, depth, collapsed, onToggle }: TreeNodePro
               <button
                 type="button"
                 onClick={() => onToggle(node.urn)}
-                className="text-muted-foreground shrink-0"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  fontSize: 10,
-                  width: 14,
-                  textAlign: 'left',
-                }}
+                className="shrink-0 border-0 bg-transparent p-0 text-[10px] leading-none w-3.5 text-left text-muted-foreground cursor-pointer"
               >
                 {isCollapsed ? '▶' : '▼'}
               </button>
             ) : (
-              <span className="shrink-0" style={{ width: 14 }} />
+              <span className="shrink-0 w-3.5" />
             )}
             <span className="text-sm">
               {consoleUrl ? <ResourceLink href={consoleUrl} name={name} /> : name}
