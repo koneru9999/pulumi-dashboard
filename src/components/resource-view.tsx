@@ -18,7 +18,7 @@ const ResourceGraph = dynamic(() => import('@/components/resource-graph-lazy'), 
 type View = 'list' | 'graph'
 
 export function ResourceView({ resources }: { resources: PulumiResource[] }) {
-  const [view, setView] = useState<View>('list')
+  const [view, setView] = useState<View>('graph')
 
   return (
     <div>
