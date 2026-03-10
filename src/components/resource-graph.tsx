@@ -18,8 +18,8 @@ import { useEffect, useMemo } from 'react'
 import type { PulumiResource } from '@/lib/pulumi-types'
 import { providerColor, resourceName } from '@/lib/resource-utils'
 
-const NODE_WIDTH = 220
-const NODE_HEIGHT = 50
+const NODE_WIDTH = 260
+const NODE_HEIGHT = 60
 
 interface ResourceNodeData {
   name: string
@@ -32,7 +32,7 @@ type ResourceNode = Node<ResourceNodeData, 'resource'>
 
 function computeLayout(resources: PulumiResource[]): { nodes: ResourceNode[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 80 })
+  g.setGraph({ rankdir: 'LR', nodesep: 20, ranksep: 60 })
   g.setDefaultEdgeLabel(() => ({}))
 
   const urnSet = new Set(resources.map((r) => r.urn))
@@ -76,9 +76,9 @@ function computeLayout(resources: PulumiResource[]): { nodes: ResourceNode[]; ed
 
 function ResourceNodeComponent({ data }: NodeProps<ResourceNode>) {
   return (
-    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-sm min-w-[200px]">
+    <div className="w-[244px] rounded-md border border-border bg-card px-3 py-2 shadow-sm">
       <Handle type="target" position={Position.Left} className="!bg-border" />
-      <div className="text-sm font-medium leading-tight">{data.name}</div>
+      <div className="truncate text-sm font-medium leading-tight">{data.name}</div>
       <div className="mt-0.5 flex items-center gap-1.5">
         <span className="shrink-0 rounded-full size-2" style={{ backgroundColor: data.color }} />
         <span className="font-mono text-[11px] leading-tight text-muted-foreground truncate">
