@@ -5,8 +5,10 @@ import {
   Background,
   Controls,
   type Edge,
+  Handle,
   type Node,
   type NodeProps,
+  Position,
   ReactFlow,
   useEdgesState,
   useNodesState,
@@ -75,6 +77,7 @@ function computeLayout(resources: PulumiResource[]): { nodes: ResourceNode[]; ed
 function ResourceNodeComponent({ data }: NodeProps<ResourceNode>) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 shadow-sm min-w-[200px]">
+      <Handle type="target" position={Position.Left} className="!bg-border" />
       <div className="text-sm font-medium leading-tight">{data.name}</div>
       <div className="mt-0.5 flex items-center gap-1.5">
         <span className="shrink-0 rounded-full size-2" style={{ backgroundColor: data.color }} />
@@ -82,6 +85,7 @@ function ResourceNodeComponent({ data }: NodeProps<ResourceNode>) {
           {data.type}
         </span>
       </div>
+      <Handle type="source" position={Position.Right} className="!bg-border" />
     </div>
   )
 }
